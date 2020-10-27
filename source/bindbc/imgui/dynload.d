@@ -34,7 +34,7 @@ bool loadImGuiSupport()
         ];
     }
     else version(Posix) {
-        const(char)[][2] libNames = [
+        const(char)[][1] libNames = [
             "imgui_gl_loader.so"
         ];
     }
@@ -92,7 +92,7 @@ ImGuiSupport loadImGui()
         ];
     }
     else version(Posix) {
-        const(char)[][2] libNames = [
+        const(char)[][1] libNames = [
             "cimgui.so"
         ];
     }
