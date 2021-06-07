@@ -8,8 +8,6 @@ import std.algorithm;
 import std.algorithm.searching;
 import std.algorithm.iteration;
 
-
-
 struct BackendData
 {
     string ImplName; // ImplSDL2
@@ -27,6 +25,7 @@ struct backend_function
 shared immutable string[string] cArgMap;
 shared immutable string[string] cTypeMap;
 shared immutable BackendData[string] cBackendMap;
+shared string[string] gConvertedEnumValue;
 
 shared static this()
 {
@@ -200,10 +199,11 @@ struct code_writer
         add_scope();
     }
 
-    void add_enum()
+    void add_enum(string enumName)
     {
         write_indent();
         mBuilder.put("enum ");
+        mBuilder.put(enumName);
         add_scope();
     }
     
@@ -502,11 +502,6 @@ struct ImSpan(tType) {
         return DataEnd; 
     }
 
-    const(tType)* end() 
-    {
-        return DataEnd; 
-    }
-
     // Utilities
     int  index_from_ptr(const tType* it)
     { 
@@ -753,6 +748,10 @@ void write_typedefs(code_writer codeWriter, JSONValue typedefs, JSONValue struct
     {
         const string originalTypeName = imgui_type_to_dlang(typeDefValue.str);
 
+        if (typedefName in structs_and_enums["enums"] ||
+            (typedefName ~ "_") in structs_and_enums["enums"])
+            continue;
+
         if (originalTypeName == "T") continue;
         if (typedefName == "iterator") continue;
         if (typedefName == "const_iterator") continue;
@@ -782,11 +781,22 @@ void write_enums(code_writer codeWriter, JSONValue definitions)
         if ('_' == adjustedName[adjustedName.length - 1])
             adjustedName = adjustedName[0 .. adjustedName.length - 1];
 
-        codeWriter.put_lines(format("alias %s = int;", enumName));
-        codeWriter.add_enum();
+        //codeWriter.put_lines(format("alias %s = int;", adjustedName));
+        codeWriter.add_enum(adjustedName);
 
         foreach (JSONValue value; enumValues.array)
-            codeWriter.put_lines(format("%s = %d,\n", value["name"].str, value["calc_value"].integer));
+        {
+            auto valueName = value["name"].str;
+            if (valueName.startsWith(enumName))
+                valueName = valueName[enumName.length .. valueName.length];
+
+            if (valueName.startsWith("_"))
+                valueName = valueName[1 .. valueName.length];
+
+            gConvertedEnumValue[value["name"].str] = adjustedName ~ "." ~ valueName;
+
+            codeWriter.put_lines(format("%s = %d,\n", valueName, value["calc_value"].integer));
+        }
 
         codeWriter.remove_scope();
         codeWriter.line_break();
@@ -808,7 +818,12 @@ void write_structs(code_writer codeWriter, JSONValue definitions)
             if ((0 != objectName.length) && (']' == objectName[objectName.length - 1]))
             {
                 ptrdiff_t position = std.string.lastIndexOf(objectName, '[');
-                typeName = typeName ~ objectName[position .. objectName.length];
+
+                string sizeExpression = objectName[position + 1 .. objectName.length - 1]; 
+                if (sizeExpression in gConvertedEnumValue)
+                    sizeExpression = gConvertedEnumValue[sizeExpression];
+
+                typeName = typeName ~ "[" ~ sizeExpression ~ "]";
                 objectName = objectName[0 .. position];
             }
             else

@@ -34,10 +34,10 @@ static:
 
         if (g_GlVersion >= 320)
         {
-            io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;  // We can honor the ImDrawCmd::VtxOffset field, allowing for large meshes.
+            io.BackendFlags |= cast(int)ImGuiBackendFlags.RendererHasVtxOffset;  // We can honor the ImDrawCmd::VtxOffset field, allowing for large meshes.
         }
         
-        io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;  // We can create multi-viewports on the Renderer side (optional)
+        io.BackendFlags |= cast(int)ImGuiBackendFlags.RendererHasViewports;  // We can create multi-viewports on the Renderer side (optional)
 
         // Make an arbitrary GL call (we don't actually need the result)
         // IF YOU GET A CRASH HERE: it probably means that you haven't initialized the OpenGL function loader used by this code.
@@ -45,7 +45,7 @@ static:
         GLint current_texture;
         glGetIntegerv(GL_TEXTURE_BINDING_2D, &current_texture);
 
-        if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+        if (io.ConfigFlags & ImGuiConfigFlags.ViewportsEnable)
             init_platform_interface();
 
         return true;
@@ -495,7 +495,7 @@ static:
     {
         static void render_window(ImGuiViewport* viewport, void*)
         {
-            if (!(viewport.Flags & ImGuiViewportFlags_NoRendererClear))
+            if (!(viewport.Flags & ImGuiViewportFlags.NoRendererClear))
             {
                 ImVec4 clear_color = ImVec4(0.0f, 0.0f, 0.0f, 1.0f);
                 glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
