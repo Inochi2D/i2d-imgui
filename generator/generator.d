@@ -1,6 +1,7 @@
 import std.stdio;
 import std.file;
 import std.json;
+import std.conv;
 import std.array;
 import std.format;
 import std.string;
@@ -22,10 +23,18 @@ struct backend_function
     JSONValue cimguiFunction;
 }
 
+struct enum_values
+{
+    string[string] values;
+}
+
 shared immutable string[string] cArgMap;
 shared immutable string[string] cTypeMap;
+shared immutable string[string] cDefaultArgumentsNeedingConversion;
 shared immutable BackendData[string] cBackendMap;
+shared enum_values[string] gEnumType; // this should actually just be a set...
 shared string[string] gConvertedEnumValue;
+
 
 shared static this()
 {
@@ -64,6 +73,15 @@ shared static this()
         "ImGuiViewportPPtr" : "ImGuiViewportP*",
         "ImGuiViewportPtr" : "ImGuiViewport*",
         "const_charPtr" : "const(char)*"
+    ];
+
+    cDefaultArgumentsNeedingConversion = [
+        "sizeof(float)" : "float.sizeof",
+        "((void*)0)" : "null",
+        "NULL" : "null",
+        "FLT_MIN" : "float.min_normal",
+        "FLT_MAX" : "float.max",
+        "ImVec2(-FLT_MIN,0)" : "ImVec2(-float.min_normal,0)"
     ];
 
     cBackendMap = [
@@ -774,6 +792,7 @@ void write_typedefs(code_writer codeWriter, JSONValue typedefs, JSONValue struct
 void write_enums(code_writer codeWriter, JSONValue definitions)
 {
     auto enums = definitions["enums"];
+
     foreach (string enumName, JSONValue enumValues; enums) 
     {
         string adjustedName = enumName;
@@ -781,8 +800,8 @@ void write_enums(code_writer codeWriter, JSONValue definitions)
         if ('_' == adjustedName[adjustedName.length - 1])
             adjustedName = adjustedName[0 .. adjustedName.length - 1];
 
-        //codeWriter.put_lines(format("alias %s = int;", adjustedName));
         codeWriter.add_enum(adjustedName);
+        gEnumType[adjustedName] = enum_values();
 
         foreach (JSONValue value; enumValues.array)
         {
@@ -796,6 +815,7 @@ void write_enums(code_writer codeWriter, JSONValue definitions)
             gConvertedEnumValue[value["name"].str] = adjustedName ~ "." ~ valueName;
 
             codeWriter.put_lines(format("%s = %d,\n", valueName, value["calc_value"].integer));
+            gEnumType[adjustedName].values[to!string(value["calc_value"].integer)] = valueName; // should cache the first gEnumType[adjustedName] call, but don't know how to take it by ref.
         }
 
         codeWriter.remove_scope();
@@ -952,10 +972,13 @@ string write_function(code_writer codeWriter, string functionName, JSONValue cim
     codeWriter.put_string("(");
 
     int i = 0;
+    auto defaultArguments = cimguiFunction["defaults"];
     foreach (JSONValue parameter; cimguiFunction["argsT"].array)
     {
         string argType = imgui_type_to_dlang(parameter["type"].str);
         string argName = parameter["name"].str;
+        string origArgName = parameter["name"].str;
+        string defaultArgument = "";
 
         // Deal with arraySubScriptToken in Arg name
         if ((0 != argName.length) && (']' == argName[argName.length - 1]))
@@ -991,6 +1014,23 @@ string write_function(code_writer codeWriter, string functionName, JSONValue cim
         // Don't write the name out if this function is variadic
         if (argName != "...") codeWriter.put_string(argName);
 
+        // Parse default argument information
+        if (origArgName in defaultArguments)
+        {
+            defaultArgument = defaultArguments[origArgName].str;
+
+            if (defaultArgument in gConvertedEnumValue) 
+                defaultArgument = gConvertedEnumValue[defaultArgument];
+            
+            if (defaultArgument in cDefaultArgumentsNeedingConversion)
+                defaultArgument = cDefaultArgumentsNeedingConversion[defaultArgument];
+
+            if (isNumeric(defaultArgument) && argType in gEnumType)
+                defaultArgument = argType ~ "." ~ to!string(gEnumType[argType].values[defaultArgument]);
+            
+            codeWriter.put_string(" = " ~ defaultArgument);
+        }
+
         // Write out a comma and space if this isn't the last parameter.
         if (++i != cimguiFunction["argsT"].array.length) codeWriter.put_string(", ");
     }
@@ -1015,6 +1055,9 @@ void write_functions(code_writer codeWriter, JSONValue definitions, bool writeFu
         foreach (JSONValue cimguiFunction; functionDecl.array)
         {
             const string functionPointerTypeName = write_function(codeWriter, functionName, cimguiFunction, writeFunctionGlobals);
+
+            if (functionDecl.array.length > 1)
+                writeln(functionName ~ " : " ~ cimguiFunction["ov_cimguiname"].str);    
 
             if (writeFunctionGlobals && (functionPointerTypeName.length != 0))
             {
@@ -1105,6 +1148,8 @@ void write_imgui_file(
     auto codeWriter = code_writer();
 
     codeWriter.put_lines("module bindbc.imgui.bind.imgui;");
+    codeWriter.line_break();
+    codeWriter.put_lines("import std.algorithm;");
     codeWriter.line_break();
     codeWriter.put_lines("import core.stdc.stdio;");
     codeWriter.line_break();
