@@ -6391,6 +6391,22 @@ version (BindImGui_Static) {
         }
     }
 }
+
+auto igGenFuncC(T)(T func) {
+  import std.traits;
+  extern(C) ReturnType!T f(Parameters!T args)
+  {
+    static if (is(ReturnType!T == void)) 
+    {
+      func(args);
+    } else 
+    {
+      return func(args);
+    }
+  }
+
+  return &f;
+}
 pragma(inline):
 ImDrawList*  igGetForegroundDrawList()
 {
@@ -6519,7 +6535,7 @@ void  igPlotLines(const(char)* label, const float* values, int values_count, int
 pragma(inline):
 void  igPlotLines(const(char)* label, float function(void* data,int idx) values_getter, void* data, int values_count, int values_offset = 0, const(char)* overlay_text = null, float scale_min = float.max, float scale_max = float.max, ImVec2 graph_size = ImVec2(0,0))
 {
-     igPlotLines_FnFloatPtr(label, values_getter, data, values_count, values_offset, overlay_text, scale_min, scale_max, graph_size);
+     igPlotLines_FnFloatPtr(label, igGenFuncC(values_getter), data, values_count, values_offset, overlay_text, scale_min, scale_max, graph_size);
 }
 pragma(inline):
 bool  igCheckboxFlags(const(char)* label, int* flags, int flags_value)
@@ -6564,7 +6580,7 @@ bool  igCombo(const(char)* label, int* current_item, const(char)* items_separate
 pragma(inline):
 bool  igCombo(const(char)* label, int* current_item, bool function(void* data,int idx,const(char)** out_text) items_getter, void* data, int items_count, int popup_max_height_in_items = -1)
 {
-    return  igCombo_FnBoolPtr(label, current_item, items_getter, data, items_count, popup_max_height_in_items);
+    return  igCombo_FnBoolPtr(label, current_item, igGenFuncC(items_getter), data, items_count, popup_max_height_in_items);
 }
 pragma(inline):
 bool  igTreeNodeEx(const(char)* label, ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags.None)
@@ -6879,7 +6895,7 @@ void  igPlotHistogram(const(char)* label, const float* values, int values_count,
 pragma(inline):
 void  igPlotHistogram(const(char)* label, float function(void* data,int idx) values_getter, void* data, int values_count, int values_offset = 0, const(char)* overlay_text = null, float scale_min = float.max, float scale_max = float.max, ImVec2 graph_size = ImVec2(0,0))
 {
-     igPlotHistogram_FnFloatPtr(label, values_getter, data, values_count, values_offset, overlay_text, scale_min, scale_max, graph_size);
+     igPlotHistogram_FnFloatPtr(label, igGenFuncC(values_getter), data, values_count, values_offset, overlay_text, scale_min, scale_max, graph_size);
 }
 pragma(inline):
 void  igSetScrollX(float scroll_x)
@@ -6934,7 +6950,7 @@ bool  igListBox(const(char)* label, int* current_item, const(char)** items, int 
 pragma(inline):
 bool  igListBox(const(char)* label, int* current_item, bool function(void* data,int idx,const(char)** out_text) items_getter, void* data, int items_count, int height_in_items = -1)
 {
-    return  igListBox_FnBoolPtr(label, current_item, items_getter, data, items_count, height_in_items);
+    return  igListBox_FnBoolPtr(label, current_item, igGenFuncC(items_getter), data, items_count, height_in_items);
 }
 pragma(inline):
 bool  igTreeNodeV(const(char)* str_id, const(char)* fmt, va_list args)

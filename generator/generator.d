@@ -716,6 +716,26 @@ struct TypeToReplace {
 };
 
 
+const string cCFunctionWrapper = q{
+auto igGenFuncC(T)(T func) {
+  import std.traits;
+  extern(C) ReturnType!T f(Parameters!T args)
+  {
+    static if (is(ReturnType!T == void)) 
+    {
+      func(args);
+    } else 
+    {
+      return func(args);
+    }
+  }
+
+  return &f;
+}
+};
+
+
+
 string[string] write_template_structs(code_writer codeWriter, JSONValue definitions)
 {
     string[string] imTemplateTypes;
@@ -976,6 +996,11 @@ struct function_overload_info
             decl = decl ~ ", ";
         }
 
+        if (parameterType.indexOf("function") != -1)
+        {
+            was_function_type = true;
+        }
+
         overload_decl = overload_decl ~ parameterType;
         decl = decl ~ parameterType;
         parameter_already_placed = true;
@@ -990,8 +1015,17 @@ struct function_overload_info
         {
             call = call ~ ", ";
         }
+        
+        if (was_function_type)
+        {
+            call = call ~ "igGenFuncC(" ~parameterName ~ ")";
+            was_function_type = false;
+        }
+        else
+        {
+            call = call ~ parameterName;
+        }
 
-        call = call ~ parameterName;
         parameter_already_placed_call = true;
     }
 
@@ -1009,6 +1043,7 @@ struct function_overload_info
     string function_ptr_type = "";
     bool parameter_already_placed = false;
     bool parameter_already_placed_call = false;
+    bool was_function_type = false;
     bool is_overload = false;
 };
 
@@ -1281,6 +1316,8 @@ void write_imgui_file(
     write_functions(codeWriter, definitions, true);
     write_backend_functions(codeWriter, impl_definitions, true);
     codeWriter.remove_scope();
+
+    codeWriter.put_lines(cCFunctionWrapper);
 
     // writing out the dlang overloaded functions:
     foreach(function_overload_info overload; infos) 
