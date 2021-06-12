@@ -942,9 +942,61 @@ void write_backend_function_loading(code_writer codeWriter, JSONValue definition
     }
 }
 
+
+struct function_overload_info
+{
+    void put_name(string name, string overloadName)
+    {
+        overload_decl = overload_decl ~ " " ~ overloadName ~ "(";
+        decl = decl ~ " " ~ name ~ "(";
+        call = call ~ " " ~ name ~ "("
+    }
+
+    void put_return(string returnType)
+    {
+        overload_decl = returnType ~ " ";
+        decl = returnType ~ " ";
+        if (returnType != "void ")
+            call = "return ";
+    }
+
+    void end_function()
+    {
+        overload_decl = overload_decl ~ ")";
+        decl = decl ~ ");";
+        call = call ~ ");";
+    }
+
+    void put_parameter(string parameter)
+    {
+        if (parameter_already_placed)
+        {
+            overload_decl = overload_decl ~ ", ";
+            decl = decl ~ ", ";
+        }
+
+        overload_decl = overload_decl ~ parameter;
+        decl = decl ~ parameter;
+        parameter_already_placed = true;
+    }
+
+    void put_default_argument(string defaultArgument)
+    {
+        overload_decl = overload_decl ~ " " ~ defaultArgument;
+        decl = decl ~ " " ~ defaultArgument;
+        // the call doesn't require a default argument. 
+    }
+
+    string overload_decl;
+    string decl;
+    string call;
+    bool parameter_already_placed = false;
+};
+
 /// Return value is the type of the Function pointer, so that it can later be used if we're writing the global symbols to load into.
 string write_function(code_writer codeWriter, string functionName, JSONValue cimguiFunction, bool writeFunctionGlobals)
 {
+    function_overload_info info;
     string returnType;
 
     if ("templated" in cimguiFunction && cimguiFunction["templated"].boolean)
@@ -1056,8 +1108,8 @@ void write_functions(code_writer codeWriter, JSONValue definitions, bool writeFu
         {
             const string functionPointerTypeName = write_function(codeWriter, functionName, cimguiFunction, writeFunctionGlobals);
 
-            if (functionDecl.array.length > 1)
-                writeln(functionName ~ " : " ~ cimguiFunction["ov_cimguiname"].str);    
+            //if (functionDecl.array.length > 1)
+            //    writeln(functionName ~ " : " ~ cimguiFunction["ov_cimguiname"].str);    
 
             if (writeFunctionGlobals && (functionPointerTypeName.length != 0))
             {
