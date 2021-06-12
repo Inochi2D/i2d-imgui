@@ -947,16 +947,17 @@ struct function_overload_info
 {
     void put_name(string name, string overloadName)
     {
+        is_overload = name != overloadName;
         overload_decl = overload_decl ~ " " ~ overloadName ~ "(";
         decl = decl ~ " " ~ name ~ "(";
-        call = call ~ " " ~ name ~ "("
+        call = call ~ " " ~ name ~ "(";
     }
 
     void put_return(string returnType)
     {
         overload_decl = returnType ~ " ";
         decl = returnType ~ " ";
-        if (returnType != "void ")
+        if (returnType != "void")
             call = "return ";
     }
 
@@ -967,7 +968,7 @@ struct function_overload_info
         call = call ~ ");";
     }
 
-    void put_parameter(string parameter)
+    void put_parameter_type(string parameterType)
     {
         if (parameter_already_placed)
         {
@@ -975,51 +976,71 @@ struct function_overload_info
             decl = decl ~ ", ";
         }
 
-        overload_decl = overload_decl ~ parameter;
-        decl = decl ~ parameter;
+        overload_decl = overload_decl ~ parameterType;
+        decl = decl ~ parameterType;
         parameter_already_placed = true;
+    }
+
+    void put_parameter_name(string parameterName)
+    {
+        overload_decl = overload_decl ~ " " ~ parameterName;
+        decl = decl ~ " " ~ parameterName;
+
+        if (parameter_already_placed_call)
+        {
+            call = call ~ ", ";
+        }
+
+        call = call ~ parameterName;
+        parameter_already_placed_call = true;
     }
 
     void put_default_argument(string defaultArgument)
     {
-        overload_decl = overload_decl ~ " " ~ defaultArgument;
-        decl = decl ~ " " ~ defaultArgument;
+        overload_decl = overload_decl ~ " = " ~ defaultArgument;
+        decl = decl ~ " = " ~ defaultArgument;
         // the call doesn't require a default argument. 
     }
 
     string overload_decl;
     string decl;
     string call;
+    string return_type = "";
+    string function_ptr_type = "";
     bool parameter_already_placed = false;
+    bool parameter_already_placed_call = false;
+    bool is_overload = false;
 };
 
 /// Return value is the type of the Function pointer, so that it can later be used if we're writing the global symbols to load into.
-string write_function(code_writer codeWriter, string functionName, JSONValue cimguiFunction, bool writeFunctionGlobals)
+function_overload_info write_function(code_writer codeWriter, string functionName, JSONValue cimguiFunction, bool writeFunctionGlobals)
 {
     function_overload_info info;
-    string returnType;
 
     if ("templated" in cimguiFunction && cimguiFunction["templated"].boolean)
-        return "";
+        return info;
 
     codeWriter.write_indent();
 
     if ("constructor" in cimguiFunction && cimguiFunction["constructor"].boolean)
-        returnType = format("%s*", functionName[0 .. std.string.lastIndexOf(functionName, '_')]);
+        info.return_type = format("%s*", functionName[0 .. std.string.lastIndexOf(functionName, '_')]);
     else
-        returnType = cimguiFunction["ret"].str;
+        info.return_type = cimguiFunction["ret"].str;
 
-    string functionPtrType = "p" ~ cimguiFunction["ov_cimguiname"].str;
+    info.function_ptr_type = "p" ~ cimguiFunction["ov_cimguiname"].str;
     if (writeFunctionGlobals)
-        codeWriter.put_string("alias " ~ functionPtrType ~ " = ");
+        codeWriter.put_string("alias " ~ info.function_ptr_type ~ " = ");
 
-    codeWriter.put_string(imgui_type_to_dlang(returnType));
+    info.put_return(imgui_type_to_dlang(info.return_type));
+    codeWriter.put_string(imgui_type_to_dlang(info.return_type));
     codeWriter.put_string(' ');
     
     if (writeFunctionGlobals)
         codeWriter.put_string("function");
     else
         codeWriter.put_string(cimguiFunction["ov_cimguiname"].str);
+
+    info.put_name(cimguiFunction["ov_cimguiname"].str, cimguiFunction["cimguiname"].str);
     
     codeWriter.put_string("(");
 
@@ -1058,13 +1079,19 @@ string write_function(code_writer codeWriter, string functionName, JSONValue cim
         argName = imgui_argname_to_dlang(argName);
         argType = imgui_type_to_dlang(argType);
 
+        info.put_parameter_type(argType);
         codeWriter.put_string(argType);
         
         if (!startsWith(argType, "..."))
             codeWriter.put_string(' ');
 
         // Don't write the name out if this function is variadic
-        if (argName != "...") codeWriter.put_string(argName);
+        if (argName != "...") 
+        {
+
+            info.put_parameter_name(argName);
+            codeWriter.put_string(argName);
+        }
 
         // Parse default argument information
         if (origArgName in defaultArguments)
@@ -1080,6 +1107,7 @@ string write_function(code_writer codeWriter, string functionName, JSONValue cim
             if (isNumeric(defaultArgument) && argType in gEnumType)
                 defaultArgument = argType ~ "." ~ to!string(gEnumType[argType].values[defaultArgument]);
             
+            info.put_default_argument(defaultArgument);
             codeWriter.put_string(" = " ~ defaultArgument);
         }
 
@@ -1087,16 +1115,18 @@ string write_function(code_writer codeWriter, string functionName, JSONValue cim
         if (++i != cimguiFunction["argsT"].array.length) codeWriter.put_string(", ");
     }
     
+    info.end_function();
     codeWriter.put_string(");");
     codeWriter.line_break();
 
-    return functionPtrType;
+    return info;
 }
 
 
-void write_functions(code_writer codeWriter, JSONValue definitions, bool writeFunctionGlobals)
+function_overload_info[] write_functions(code_writer codeWriter, JSONValue definitions, bool writeFunctionGlobals)
 {
     string[] imFunctionPtrTypes;
+    function_overload_info[] infos;
 
     codeWriter.add_extern_c();
     foreach (string functionName, JSONValue functionDecl; definitions)
@@ -1106,7 +1136,8 @@ void write_functions(code_writer codeWriter, JSONValue definitions, bool writeFu
 
         foreach (JSONValue cimguiFunction; functionDecl.array)
         {
-            const string functionPointerTypeName = write_function(codeWriter, functionName, cimguiFunction, writeFunctionGlobals);
+            auto functionInfo = write_function(codeWriter, functionName, cimguiFunction, writeFunctionGlobals);
+            const string functionPointerTypeName = functionInfo.function_ptr_type;
 
             //if (functionDecl.array.length > 1)
             //    writeln(functionName ~ " : " ~ cimguiFunction["ov_cimguiname"].str);    
@@ -1115,6 +1146,11 @@ void write_functions(code_writer codeWriter, JSONValue definitions, bool writeFu
             {
                 ++imFunctionPtrTypes.length;
                 imFunctionPtrTypes[imFunctionPtrTypes.length - 1] = functionPointerTypeName;
+            }
+
+            if (functionInfo.is_overload)
+            {
+                infos ~= functionInfo;
             }
         }
     }
@@ -1130,12 +1166,14 @@ void write_functions(code_writer codeWriter, JSONValue definitions, bool writeFu
     }
     
     codeWriter.remove_scope();
+    return infos;
 }
 
-void write_backend_functions(code_writer codeWriter, JSONValue definitions, bool writeFunctionGlobals)
+function_overload_info[] write_backend_functions(code_writer codeWriter, JSONValue definitions, bool writeFunctionGlobals)
 {
     // impl to a Backend
     backend_function[][string] backendFunctionsMap = get_backend_functions(definitions);
+    function_overload_info[] infos;
     
     codeWriter.add_extern_c();
 
@@ -1160,16 +1198,22 @@ void write_backend_functions(code_writer codeWriter, JSONValue definitions, bool
 
         foreach (backendFunction; backendFunctions)
         {
-            const string functionPointerTypeName = write_function(
+            auto info = write_function(
                 codeWriter, 
                 backendFunction.functionName, 
                 backendFunction.cimguiFunction, 
                 writeFunctionGlobals);
+            const string functionPointerTypeName = info.function_ptr_type;
             
             if (writeFunctionGlobals && (functionPointerTypeName.length != 0))
             {
                 ++imFunctionPtrTypes.length;
                 imFunctionPtrTypes[imFunctionPtrTypes.length - 1] = functionPointerTypeName;
+            }
+
+            if (info.is_overload)
+            {
+                infos ~= info;
             }
         }
         
@@ -1188,6 +1232,7 @@ void write_backend_functions(code_writer codeWriter, JSONValue definitions, bool
     }
     
     codeWriter.remove_scope(); // extern
+    return infos;
 }
 
 
@@ -1223,8 +1268,8 @@ void write_imgui_file(
     // Writing out the static version of the symbols
     codeWriter.add_version("BindImGui_Static");
 
-    write_functions(codeWriter, definitions, false);
-    write_backend_functions(codeWriter, impl_definitions, false);
+    auto infos = write_functions(codeWriter, definitions, false);
+    infos ~= write_backend_functions(codeWriter, impl_definitions, false);
 
     // NOTE: For some reason we merge this scope and following else into one line, hence why we're not using remove_scope here.    
     codeWriter.remove_indent();
@@ -1235,8 +1280,17 @@ void write_imgui_file(
 
     write_functions(codeWriter, definitions, true);
     write_backend_functions(codeWriter, impl_definitions, true);
-    
     codeWriter.remove_scope();
+
+    // writing out the dlang overloaded functions:
+    foreach(function_overload_info overload; infos) 
+    {
+        codeWriter.put_lines("pragma(inline):");
+        codeWriter.put_lines(overload.overload_decl);
+        codeWriter.add_scope();
+        codeWriter.put_lines(overload.call);
+        codeWriter.remove_scope();
+    }
 
     std.file.write("source/bindbc/imgui/bind/imgui.d", codeWriter.mBuilder.data);
 }
