@@ -6412,763 +6412,924 @@ ImDrawList*  igGetForegroundDrawList()
 {
     return  igGetForegroundDrawList_Nil();
 }
+
 pragma(inline):
 ImDrawList*  igGetForegroundDrawList(ImGuiViewport* viewport)
 {
     return  igGetForegroundDrawList_ViewportPtr(viewport);
 }
+
 pragma(inline):
 ImDrawList*  igGetForegroundDrawList(ImGuiWindow* window)
 {
     return  igGetForegroundDrawList_WindowPtr(window);
 }
+
 pragma(inline):
 bool  igRadioButton(const(char)* label, bool active)
 {
     return  igRadioButton_Bool(label, active);
 }
+
 pragma(inline):
 bool  igRadioButton(const(char)* label, int* v, int v_button)
 {
     return  igRadioButton_IntPtr(label, v, v_button);
 }
+
 pragma(inline):
 bool  igIsPopupOpen(const(char)* str_id, ImGuiPopupFlags flags = ImGuiPopupFlags.MouseButtonLeft)
 {
     return  igIsPopupOpen_Str(str_id, flags);
 }
+
 pragma(inline):
 bool  igIsPopupOpen(ImGuiID id, ImGuiPopupFlags popup_flags)
 {
     return  igIsPopupOpen_ID(id, popup_flags);
 }
+
 pragma(inline):
 ImGuiID  ImGuiWindow_GetID(ImGuiWindow* self, const(char)* str, const(char)* str_end = null)
 {
     return  ImGuiWindow_GetID_Str(self, str, str_end);
 }
+
 pragma(inline):
 ImGuiID  ImGuiWindow_GetID(ImGuiWindow* self, const void* ptr)
 {
     return  ImGuiWindow_GetID_Ptr(self, ptr);
 }
+
 pragma(inline):
 ImGuiID  ImGuiWindow_GetID(ImGuiWindow* self, int n)
 {
     return  ImGuiWindow_GetID_Int(self, n);
 }
+
 pragma(inline):
 void  igSetWindowCollapsed(bool collapsed, ImGuiCond cond = ImGuiCond.None)
 {
      igSetWindowCollapsed_Bool(collapsed, cond);
 }
+
 pragma(inline):
 void  igSetWindowCollapsed(const(char)* name, bool collapsed, ImGuiCond cond = ImGuiCond.None)
 {
      igSetWindowCollapsed_Str(name, collapsed, cond);
 }
+
 pragma(inline):
 void  igSetWindowCollapsed(ImGuiWindow* window, bool collapsed, ImGuiCond cond = ImGuiCond.None)
 {
      igSetWindowCollapsed_WindowPtr(window, collapsed, cond);
 }
+
 pragma(inline):
 bool  igIsRectVisible(const ImVec2 size)
 {
     return  igIsRectVisible_Nil(size);
 }
+
 pragma(inline):
 bool  igIsRectVisible(const ImVec2 rect_min, const ImVec2 rect_max)
 {
     return  igIsRectVisible_Vec2(rect_min, rect_max);
 }
+
 pragma(inline):
 bool  igMenuItem(const(char)* label, const(char)* shortcut = null, bool selected = false, bool enabled = true)
 {
     return  igMenuItem_Bool(label, shortcut, selected, enabled);
 }
+
 pragma(inline):
 bool  igMenuItem(const(char)* label, const(char)* shortcut, bool* p_selected, bool enabled = true)
 {
     return  igMenuItem_BoolPtr(label, shortcut, p_selected, enabled);
 }
+
 pragma(inline):
 ImGuiStyleMod*  ImGuiStyleMod_ImGuiStyleMod(ImGuiStyleVar idx, int v)
 {
     return  ImGuiStyleMod_ImGuiStyleMod_Int(idx, v);
 }
+
 pragma(inline):
 ImGuiStyleMod*  ImGuiStyleMod_ImGuiStyleMod(ImGuiStyleVar idx, float v)
 {
     return  ImGuiStyleMod_ImGuiStyleMod_Float(idx, v);
 }
+
 pragma(inline):
 ImGuiStyleMod*  ImGuiStyleMod_ImGuiStyleMod(ImGuiStyleVar idx, ImVec2 v)
 {
     return  ImGuiStyleMod_ImGuiStyleMod_Vec2(idx, v);
 }
+
 pragma(inline):
 void  igPushStyleVar(ImGuiStyleVar idx, float val)
 {
      igPushStyleVar_Float(idx, val);
 }
+
 pragma(inline):
 void  igPushStyleVar(ImGuiStyleVar idx, const ImVec2 val)
 {
      igPushStyleVar_Vec2(idx, val);
 }
+
 pragma(inline):
 void  igSetWindowFocus()
 {
      igSetWindowFocus_Nil();
 }
+
 pragma(inline):
 void  igSetWindowFocus(const(char)* name)
 {
      igSetWindowFocus_Str(name);
 }
+
 pragma(inline):
 void  igPlotLines(const(char)* label, const float* values, int values_count, int values_offset = 0, const(char)* overlay_text = null, float scale_min = float.max, float scale_max = float.max, ImVec2 graph_size = ImVec2(0,0), int stride = float.sizeof)
 {
      igPlotLines_FloatPtr(label, values, values_count, values_offset, overlay_text, scale_min, scale_max, graph_size, stride);
 }
+
+extern(C) alias igPlotLines_values_getter = float function(void* data,int idx);
+
 pragma(inline):
-void  igPlotLines(const(char)* label, float function(void* data,int idx) values_getter, void* data, int values_count, int values_offset = 0, const(char)* overlay_text = null, float scale_min = float.max, float scale_max = float.max, ImVec2 graph_size = ImVec2(0,0))
+void  igPlotLines(const(char)* label, igPlotLines_values_getter values_getter, void* data, int values_count, int values_offset = 0, const(char)* overlay_text = null, float scale_min = float.max, float scale_max = float.max, ImVec2 graph_size = ImVec2(0,0))
 {
-     igPlotLines_FnFloatPtr(label, igGenFuncC(values_getter), data, values_count, values_offset, overlay_text, scale_min, scale_max, graph_size);
+     igPlotLines_FnFloatPtr(label, values_getter, data, values_count, values_offset, overlay_text, scale_min, scale_max, graph_size);
 }
+
 pragma(inline):
 bool  igCheckboxFlags(const(char)* label, int* flags, int flags_value)
 {
     return  igCheckboxFlags_IntPtr(label, flags, flags_value);
 }
+
 pragma(inline):
 bool  igCheckboxFlags(const(char)* label, uint* flags, uint flags_value)
 {
     return  igCheckboxFlags_UintPtr(label, flags, flags_value);
 }
+
 pragma(inline):
 bool  igCheckboxFlags(const(char)* label, ImS64* flags, ImS64 flags_value)
 {
     return  igCheckboxFlags_S64Ptr(label, flags, flags_value);
 }
+
 pragma(inline):
 bool  igCheckboxFlags(const(char)* label, ImU64* flags, ImU64 flags_value)
 {
     return  igCheckboxFlags_U64Ptr(label, flags, flags_value);
 }
+
 pragma(inline):
 void  igSetScrollY(float scroll_y)
 {
      igSetScrollY_Float(scroll_y);
 }
+
 pragma(inline):
 void  igSetScrollY(ImGuiWindow* window, float scroll_y)
 {
      igSetScrollY_WindowPtr(window, scroll_y);
 }
+
 pragma(inline):
 bool  igCombo(const(char)* label, int* current_item, const(char)** items, int items_count, int popup_max_height_in_items = -1)
 {
     return  igCombo_Str_arr(label, current_item, items, items_count, popup_max_height_in_items);
 }
+
 pragma(inline):
 bool  igCombo(const(char)* label, int* current_item, const(char)* items_separated_by_zeros, int popup_max_height_in_items = -1)
 {
     return  igCombo_Str(label, current_item, items_separated_by_zeros, popup_max_height_in_items);
 }
+
+extern(C) alias igCombo_items_getter = bool function(void* data,int idx,const(char)** out_text);
+
 pragma(inline):
-bool  igCombo(const(char)* label, int* current_item, bool function(void* data,int idx,const(char)** out_text) items_getter, void* data, int items_count, int popup_max_height_in_items = -1)
+bool  igCombo(const(char)* label, int* current_item, igCombo_items_getter items_getter, void* data, int items_count, int popup_max_height_in_items = -1)
 {
-    return  igCombo_FnBoolPtr(label, current_item, igGenFuncC(items_getter), data, items_count, popup_max_height_in_items);
+    return  igCombo_FnBoolPtr(label, current_item, items_getter, data, items_count, popup_max_height_in_items);
 }
+
 pragma(inline):
 bool  igTreeNodeEx(const(char)* label, ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags.None)
 {
     return  igTreeNodeEx_Str(label, flags);
 }
+
 pragma(inline):
 bool  igTreeNodeEx(const(char)* str_id, ImGuiTreeNodeFlags flags, const(char)* fmt, ...)
 {
     return  igTreeNodeEx_StrStr(str_id, flags, fmt);
 }
+
 pragma(inline):
 bool  igTreeNodeEx(const void* ptr_id, ImGuiTreeNodeFlags flags, const(char)* fmt, ...)
 {
     return  igTreeNodeEx_Ptr(ptr_id, flags, fmt);
 }
+
 pragma(inline):
 const(char)*  igTableGetColumnName(int column_n = -1)
 {
     return  igTableGetColumnName_Int(column_n);
 }
+
 pragma(inline):
 const(char)*  igTableGetColumnName(const ImGuiTable* table, int column_n)
 {
     return  igTableGetColumnName_TablePtr(table, column_n);
 }
+
 pragma(inline):
 float  igImSign(float x)
 {
     return  igImSign_Float(x);
 }
+
 pragma(inline):
 double  igImSign(double x)
 {
     return  igImSign_double(x);
 }
+
 pragma(inline):
 bool  igTreeNodeExV(const(char)* str_id, ImGuiTreeNodeFlags flags, const(char)* fmt, va_list args)
 {
     return  igTreeNodeExV_Str(str_id, flags, fmt, args);
 }
+
 pragma(inline):
 bool  igTreeNodeExV(const void* ptr_id, ImGuiTreeNodeFlags flags, const(char)* fmt, va_list args)
 {
     return  igTreeNodeExV_Ptr(ptr_id, flags, fmt, args);
 }
+
 pragma(inline):
 ImVec2ih*  ImVec2ih_ImVec2ih()
 {
     return  ImVec2ih_ImVec2ih_Nil();
 }
+
 pragma(inline):
 ImVec2ih*  ImVec2ih_ImVec2ih(short _x, short _y)
 {
     return  ImVec2ih_ImVec2ih_short(_x, _y);
 }
+
 pragma(inline):
 ImVec2ih*  ImVec2ih_ImVec2ih(const ImVec2 rhs)
 {
     return  ImVec2ih_ImVec2ih_Vec2(rhs);
 }
+
 pragma(inline):
 ImVec1*  ImVec1_ImVec1()
 {
     return  ImVec1_ImVec1_Nil();
 }
+
 pragma(inline):
 ImVec1*  ImVec1_ImVec1(float _x)
 {
     return  ImVec1_ImVec1_Float(_x);
 }
+
 pragma(inline):
 ImGuiID  ImGuiWindow_GetIDNoKeepAlive(ImGuiWindow* self, const(char)* str, const(char)* str_end = null)
 {
     return  ImGuiWindow_GetIDNoKeepAlive_Str(self, str, str_end);
 }
+
 pragma(inline):
 ImGuiID  ImGuiWindow_GetIDNoKeepAlive(ImGuiWindow* self, const void* ptr)
 {
     return  ImGuiWindow_GetIDNoKeepAlive_Ptr(self, ptr);
 }
+
 pragma(inline):
 ImGuiID  ImGuiWindow_GetIDNoKeepAlive(ImGuiWindow* self, int n)
 {
     return  ImGuiWindow_GetIDNoKeepAlive_Int(self, n);
 }
+
 pragma(inline):
 ImVec4*  ImVec4_ImVec4()
 {
     return  ImVec4_ImVec4_Nil();
 }
+
 pragma(inline):
 ImVec4*  ImVec4_ImVec4(float _x, float _y, float _z, float _w)
 {
     return  ImVec4_ImVec4_Float(_x, _y, _z, _w);
 }
+
 pragma(inline):
 float  igImPow(float x, float y)
 {
     return  igImPow_Float(x, y);
 }
+
 pragma(inline):
 double  igImPow(double x, double y)
 {
     return  igImPow_double(x, y);
 }
+
 pragma(inline):
 void  ImRect_Add(ImRect* self, const ImVec2 p)
 {
      ImRect_Add_Vec2(self, p);
 }
+
 pragma(inline):
 void  ImRect_Add(ImRect* self, const ImRect r)
 {
      ImRect_Add_Rect(self, r);
 }
+
 pragma(inline):
 void  igMarkIniSettingsDirty()
 {
      igMarkIniSettingsDirty_Nil();
 }
+
 pragma(inline):
 void  igMarkIniSettingsDirty(ImGuiWindow* window)
 {
      igMarkIniSettingsDirty_WindowPtr(window);
 }
+
 pragma(inline):
 bool  igImIsPowerOfTwo(int v)
 {
     return  igImIsPowerOfTwo_Int(v);
 }
+
 pragma(inline):
 bool  igImIsPowerOfTwo(ImU64 v)
 {
     return  igImIsPowerOfTwo_U64(v);
 }
+
 pragma(inline):
 void  igTableGcCompactTransientBuffers(ImGuiTable* table)
 {
      igTableGcCompactTransientBuffers_TablePtr(table);
 }
+
 pragma(inline):
 void  igTableGcCompactTransientBuffers(ImGuiTableTempData* table)
 {
      igTableGcCompactTransientBuffers_TableTempDataPtr(table);
 }
+
 pragma(inline):
 void  igSetScrollFromPosX(float local_x, float center_x_ratio = 0.5f)
 {
      igSetScrollFromPosX_Float(local_x, center_x_ratio);
 }
+
 pragma(inline):
 void  igSetScrollFromPosX(ImGuiWindow* window, float local_x, float center_x_ratio)
 {
      igSetScrollFromPosX_WindowPtr(window, local_x, center_x_ratio);
 }
+
 pragma(inline):
 void  igSetScrollFromPosY(float local_y, float center_y_ratio = 0.5f)
 {
      igSetScrollFromPosY_Float(local_y, center_y_ratio);
 }
+
 pragma(inline):
 void  igSetScrollFromPosY(ImGuiWindow* window, float local_y, float center_y_ratio)
 {
      igSetScrollFromPosY_WindowPtr(window, local_y, center_y_ratio);
 }
+
 pragma(inline):
 ImGuiStoragePair*  ImGuiStoragePair_ImGuiStoragePair(ImGuiID _key, int _val_i)
 {
     return  ImGuiStoragePair_ImGuiStoragePair_Int(_key, _val_i);
 }
+
 pragma(inline):
 ImGuiStoragePair*  ImGuiStoragePair_ImGuiStoragePair(ImGuiID _key, float _val_f)
 {
     return  ImGuiStoragePair_ImGuiStoragePair_Float(_key, _val_f);
 }
+
 pragma(inline):
 ImGuiStoragePair*  ImGuiStoragePair_ImGuiStoragePair(ImGuiID _key, void* _val_p)
 {
     return  ImGuiStoragePair_ImGuiStoragePair_Ptr(_key, _val_p);
 }
+
 pragma(inline):
 ImGuiTextRange*  ImGuiTextRange_ImGuiTextRange()
 {
     return  ImGuiTextRange_ImGuiTextRange_Nil();
 }
+
 pragma(inline):
 ImGuiTextRange*  ImGuiTextRange_ImGuiTextRange(const(char)* _b, const(char)* _e)
 {
     return  ImGuiTextRange_ImGuiTextRange_Str(_b, _e);
 }
+
 pragma(inline):
 ImGuiID  igGetID(const(char)* str_id)
 {
     return  igGetID_Str(str_id);
 }
+
 pragma(inline):
 ImGuiID  igGetID(const(char)* str_id_begin, const(char)* str_id_end)
 {
     return  igGetID_StrStr(str_id_begin, str_id_end);
 }
+
 pragma(inline):
 ImGuiID  igGetID(const void* ptr_id)
 {
     return  igGetID_Ptr(ptr_id);
 }
+
 pragma(inline):
 bool  ImRect_Contains(ImRect* self, const ImVec2 p)
 {
     return  ImRect_Contains_Vec2(self, p);
 }
+
 pragma(inline):
 bool  ImRect_Contains(ImRect* self, const ImRect r)
 {
     return  ImRect_Contains_Rect(self, r);
 }
+
 pragma(inline):
 ImDrawList*  igGetBackgroundDrawList()
 {
     return  igGetBackgroundDrawList_Nil();
 }
+
 pragma(inline):
 ImDrawList*  igGetBackgroundDrawList(ImGuiViewport* viewport)
 {
     return  igGetBackgroundDrawList_ViewportPtr(viewport);
 }
+
 pragma(inline):
 float  igImLengthSqr(const ImVec2 lhs)
 {
     return  igImLengthSqr_Vec2(lhs);
 }
+
 pragma(inline):
 float  igImLengthSqr(const ImVec4 lhs)
 {
     return  igImLengthSqr_Vec4(lhs);
 }
+
 pragma(inline):
 bool  igCollapsingHeader(const(char)* label, ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags.None)
 {
     return  igCollapsingHeader_TreeNodeFlags(label, flags);
 }
+
 pragma(inline):
 bool  igCollapsingHeader(const(char)* label, bool* p_visible, ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags.None)
 {
     return  igCollapsingHeader_BoolPtr(label, p_visible, flags);
 }
+
 pragma(inline):
 void  igPushStyleColor(ImGuiCol idx, ImU32 col)
 {
      igPushStyleColor_U32(idx, col);
 }
+
 pragma(inline):
 void  igPushStyleColor(ImGuiCol idx, const ImVec4 col)
 {
      igPushStyleColor_Vec4(idx, col);
 }
+
 pragma(inline):
 bool  igTreeNode(const(char)* label)
 {
     return  igTreeNode_Str(label);
 }
+
 pragma(inline):
 bool  igTreeNode(const(char)* str_id, const(char)* fmt, ...)
 {
     return  igTreeNode_StrStr(str_id, fmt);
 }
+
 pragma(inline):
 bool  igTreeNode(const void* ptr_id, const(char)* fmt, ...)
 {
     return  igTreeNode_Ptr(ptr_id, fmt);
 }
+
 pragma(inline):
 bool  igSelectable(const(char)* label, bool selected = false, ImGuiSelectableFlags flags = ImGuiSelectableFlags.None, const ImVec2 size = ImVec2(0,0))
 {
     return  igSelectable_Bool(label, selected, flags, size);
 }
+
 pragma(inline):
 bool  igSelectable(const(char)* label, bool* p_selected, ImGuiSelectableFlags flags = ImGuiSelectableFlags.None, const ImVec2 size = ImVec2(0,0))
 {
     return  igSelectable_BoolPtr(label, p_selected, flags, size);
 }
+
 pragma(inline):
 ImColor*  ImColor_ImColor()
 {
     return  ImColor_ImColor_Nil();
 }
+
 pragma(inline):
 ImColor*  ImColor_ImColor(int r, int g, int b, int a = 255)
 {
     return  ImColor_ImColor_Int(r, g, b, a);
 }
+
 pragma(inline):
 ImColor*  ImColor_ImColor(ImU32 rgba)
 {
     return  ImColor_ImColor_U32(rgba);
 }
+
 pragma(inline):
 ImColor*  ImColor_ImColor(float r, float g, float b, float a = 1.0f)
 {
     return  ImColor_ImColor_Float(r, g, b, a);
 }
+
 pragma(inline):
 ImColor*  ImColor_ImColor(const ImVec4 col)
 {
     return  ImColor_ImColor_Vec4(col);
 }
+
 pragma(inline):
 void  igPlotHistogram(const(char)* label, const float* values, int values_count, int values_offset = 0, const(char)* overlay_text = null, float scale_min = float.max, float scale_max = float.max, ImVec2 graph_size = ImVec2(0,0), int stride = float.sizeof)
 {
      igPlotHistogram_FloatPtr(label, values, values_count, values_offset, overlay_text, scale_min, scale_max, graph_size, stride);
 }
+
+extern(C) alias igPlotHistogram_values_getter = float function(void* data,int idx);
+
 pragma(inline):
-void  igPlotHistogram(const(char)* label, float function(void* data,int idx) values_getter, void* data, int values_count, int values_offset = 0, const(char)* overlay_text = null, float scale_min = float.max, float scale_max = float.max, ImVec2 graph_size = ImVec2(0,0))
+void  igPlotHistogram(const(char)* label, igPlotHistogram_values_getter values_getter, void* data, int values_count, int values_offset = 0, const(char)* overlay_text = null, float scale_min = float.max, float scale_max = float.max, ImVec2 graph_size = ImVec2(0,0))
 {
-     igPlotHistogram_FnFloatPtr(label, igGenFuncC(values_getter), data, values_count, values_offset, overlay_text, scale_min, scale_max, graph_size);
+     igPlotHistogram_FnFloatPtr(label, values_getter, data, values_count, values_offset, overlay_text, scale_min, scale_max, graph_size);
 }
+
 pragma(inline):
 void  igSetScrollX(float scroll_x)
 {
      igSetScrollX_Float(scroll_x);
 }
+
 pragma(inline):
 void  igSetScrollX(ImGuiWindow* window, float scroll_x)
 {
      igSetScrollX_WindowPtr(window, scroll_x);
 }
+
 pragma(inline):
 int  igImAbs(int x)
 {
     return  igImAbs_Int(x);
 }
+
 pragma(inline):
 float  igImAbs(float x)
 {
     return  igImAbs_Float(x);
 }
+
 pragma(inline):
 double  igImAbs(double x)
 {
     return  igImAbs_double(x);
 }
+
 pragma(inline):
 void  igTreePush(const(char)* str_id)
 {
      igTreePush_Str(str_id);
 }
+
 pragma(inline):
 void  igTreePush(const void* ptr_id = null)
 {
      igTreePush_Ptr(ptr_id);
 }
+
 pragma(inline):
 float  igImRsqrt(float x)
 {
     return  igImRsqrt_Float(x);
 }
+
 pragma(inline):
 double  igImRsqrt(double x)
 {
     return  igImRsqrt_double(x);
 }
+
 pragma(inline):
 bool  igListBox(const(char)* label, int* current_item, const(char)** items, int items_count, int height_in_items = -1)
 {
     return  igListBox_Str_arr(label, current_item, items, items_count, height_in_items);
 }
+
+extern(C) alias igListBox_items_getter = bool function(void* data,int idx,const(char)** out_text);
+
 pragma(inline):
-bool  igListBox(const(char)* label, int* current_item, bool function(void* data,int idx,const(char)** out_text) items_getter, void* data, int items_count, int height_in_items = -1)
+bool  igListBox(const(char)* label, int* current_item, igListBox_items_getter items_getter, void* data, int items_count, int height_in_items = -1)
 {
-    return  igListBox_FnBoolPtr(label, current_item, igGenFuncC(items_getter), data, items_count, height_in_items);
+    return  igListBox_FnBoolPtr(label, current_item, items_getter, data, items_count, height_in_items);
 }
+
 pragma(inline):
 bool  igTreeNodeV(const(char)* str_id, const(char)* fmt, va_list args)
 {
     return  igTreeNodeV_Str(str_id, fmt, args);
 }
+
 pragma(inline):
 bool  igTreeNodeV(const void* ptr_id, const(char)* fmt, va_list args)
 {
     return  igTreeNodeV_Ptr(ptr_id, fmt, args);
 }
+
 pragma(inline):
 void  igValue(const(char)* prefix, bool b)
 {
      igValue_Bool(prefix, b);
 }
+
 pragma(inline):
 void  igValue(const(char)* prefix, int v)
 {
      igValue_Int(prefix, v);
 }
+
 pragma(inline):
 void  igValue(const(char)* prefix, uint v)
 {
      igValue_Uint(prefix, v);
 }
+
 pragma(inline):
 void  igValue(const(char)* prefix, float v, const(char)* float_format = null)
 {
      igValue_Float(prefix, v, float_format);
 }
+
 pragma(inline):
 void  igPushID(const(char)* str_id)
 {
      igPushID_Str(str_id);
 }
+
 pragma(inline):
 void  igPushID(const(char)* str_id_begin, const(char)* str_id_end)
 {
      igPushID_StrStr(str_id_begin, str_id_end);
 }
+
 pragma(inline):
 void  igPushID(const void* ptr_id)
 {
      igPushID_Ptr(ptr_id);
 }
+
 pragma(inline):
 void  igPushID(int int_id)
 {
      igPushID_Int(int_id);
 }
+
 pragma(inline):
 ImGuiPtrOrIndex*  ImGuiPtrOrIndex_ImGuiPtrOrIndex(void* ptr)
 {
     return  ImGuiPtrOrIndex_ImGuiPtrOrIndex_Ptr(ptr);
 }
+
 pragma(inline):
 ImGuiPtrOrIndex*  ImGuiPtrOrIndex_ImGuiPtrOrIndex(int index)
 {
     return  ImGuiPtrOrIndex_ImGuiPtrOrIndex_Int(index);
 }
+
 pragma(inline):
 void  igImLerp(ImVec2* pOut, const ImVec2 a, const ImVec2 b, float t)
 {
      igImLerp_Vec2Float(pOut, a, b, t);
 }
+
 pragma(inline):
 void  igImLerp(ImVec2* pOut, const ImVec2 a, const ImVec2 b, const ImVec2 t)
 {
      igImLerp_Vec2Vec2(pOut, a, b, t);
 }
+
 pragma(inline):
 void  igImLerp(ImVec4* pOut, const ImVec4 a, const ImVec4 b, float t)
 {
      igImLerp_Vec4(pOut, a, b, t);
 }
+
 pragma(inline):
 void  igItemSize(const ImVec2 size, float text_baseline_y = -1.0f)
 {
      igItemSize_Vec2(size, text_baseline_y);
 }
+
 pragma(inline):
 void  igItemSize(const ImRect bb, float text_baseline_y = -1.0f)
 {
      igItemSize_Rect(bb, text_baseline_y);
 }
+
 pragma(inline):
 float  igImLog(float x)
 {
     return  igImLog_Float(x);
 }
+
 pragma(inline):
 double  igImLog(double x)
 {
     return  igImLog_double(x);
 }
+
 pragma(inline):
 bool  igBeginChild(const(char)* str_id, const ImVec2 size = ImVec2(0,0), bool border = false, ImGuiWindowFlags flags = ImGuiWindowFlags.None)
 {
     return  igBeginChild_Str(str_id, size, border, flags);
 }
+
 pragma(inline):
 bool  igBeginChild(ImGuiID id, const ImVec2 size = ImVec2(0,0), bool border = false, ImGuiWindowFlags flags = ImGuiWindowFlags.None)
 {
     return  igBeginChild_ID(id, size, border, flags);
 }
+
 pragma(inline):
 void  ImDrawList_AddText(ImDrawList* self, const ImVec2 pos, ImU32 col, const(char)* text_begin, const(char)* text_end = null)
 {
      ImDrawList_AddText_Vec2(self, pos, col, text_begin, text_end);
 }
+
 pragma(inline):
 void  ImDrawList_AddText(ImDrawList* self, const ImFont* font, float font_size, const ImVec2 pos, ImU32 col, const(char)* text_begin, const(char)* text_end = null, float wrap_width = 0.0f, const ImVec4* cpu_fine_clip_rect = null)
 {
      ImDrawList_AddText_FontPtr(self, font, font_size, pos, col, text_begin, text_end, wrap_width, cpu_fine_clip_rect);
 }
+
 pragma(inline):
 ImVec2*  ImVec2_ImVec2()
 {
     return  ImVec2_ImVec2_Nil();
 }
+
 pragma(inline):
 ImVec2*  ImVec2_ImVec2(float _x, float _y)
 {
     return  ImVec2_ImVec2_Float(_x, _y);
 }
+
 pragma(inline):
 void  igSetWindowPos(const ImVec2 pos, ImGuiCond cond = ImGuiCond.None)
 {
      igSetWindowPos_Vec2(pos, cond);
 }
+
 pragma(inline):
 void  igSetWindowPos(const(char)* name, const ImVec2 pos, ImGuiCond cond = ImGuiCond.None)
 {
      igSetWindowPos_Str(name, pos, cond);
 }
+
 pragma(inline):
 void  igSetWindowPos(ImGuiWindow* window, const ImVec2 pos, ImGuiCond cond = ImGuiCond.None)
 {
      igSetWindowPos_WindowPtr(window, pos, cond);
 }
+
 pragma(inline):
 ImRect*  ImRect_ImRect()
 {
     return  ImRect_ImRect_Nil();
 }
+
 pragma(inline):
 ImRect*  ImRect_ImRect(const ImVec2 min, const ImVec2 max)
 {
     return  ImRect_ImRect_Vec2(min, max);
 }
+
 pragma(inline):
 ImRect*  ImRect_ImRect(const ImVec4 v)
 {
     return  ImRect_ImRect_Vec4(v);
 }
+
 pragma(inline):
 ImRect*  ImRect_ImRect(float x1, float y1, float x2, float y2)
 {
     return  ImRect_ImRect_Float(x1, y1, x2, y2);
 }
+
 pragma(inline):
 ImU32  igGetColorU32(ImGuiCol idx, float alpha_mul = 1.0f)
 {
     return  igGetColorU32_Col(idx, alpha_mul);
 }
+
 pragma(inline):
 ImU32  igGetColorU32(const ImVec4 col)
 {
     return  igGetColorU32_Vec4(col);
 }
+
 pragma(inline):
 ImU32  igGetColorU32(ImU32 col)
 {
     return  igGetColorU32_U32(col);
 }
+
 pragma(inline):
 void  igSetWindowSize(const ImVec2 size, ImGuiCond cond = ImGuiCond.None)
 {
      igSetWindowSize_Vec2(size, cond);
 }
+
 pragma(inline):
 void  igSetWindowSize(const(char)* name, const ImVec2 size, ImGuiCond cond = ImGuiCond.None)
 {
      igSetWindowSize_Str(name, size, cond);
 }
+
 pragma(inline):
 void  igSetWindowSize(ImGuiWindow* window, const ImVec2 size, ImGuiCond cond = ImGuiCond.None)
 {
      igSetWindowSize_WindowPtr(window, size, cond);
 }
+
 pragma(inline):
 void  ImRect_Expand(ImRect* self, const float amount)
 {
      ImRect_Expand_Float(self, amount);
 }
+
 pragma(inline):
 void  ImRect_Expand(ImRect* self, const ImVec2 amount)
 {
      ImRect_Expand_Vec2(self, amount);
 }
+
 pragma(inline):
 void  igOpenPopup(const(char)* str_id, ImGuiPopupFlags popup_flags = ImGuiPopupFlags.MouseButtonLeft)
 {
      igOpenPopup_Str(str_id, popup_flags);
 }
+
 pragma(inline):
 void  igOpenPopup(ImGuiID id, ImGuiPopupFlags popup_flags = ImGuiPopupFlags.MouseButtonLeft)
 {
      igOpenPopup_ID(id, popup_flags);
 }
+
 pragma(inline):
 float  igImFloor(float f)
 {
     return  igImFloor_Float(f);
 }
+
 pragma(inline):
 void  igImFloor(ImVec2* pOut, const ImVec2 v)
 {
      igImFloor_Vec2(pOut, v);
 }
+

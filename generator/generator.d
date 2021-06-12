@@ -967,6 +967,7 @@ struct function_overload_info
 {
     void put_name(string name, string overloadName)
     {
+        overload_name = overloadName;
         is_overload = name != overloadName;
         overload_decl = overload_decl ~ " " ~ overloadName ~ "(";
         decl = decl ~ " " ~ name ~ "(";
@@ -999,18 +1000,19 @@ struct function_overload_info
         if (parameterType.indexOf("function") != -1)
         {
             was_function_type = true;
+            last_function_type = parameterType;
+        }
+        else // function paramters need the name of the parameter to have their type name written out.
+        {
+            overload_decl = overload_decl ~ parameterType;
+            decl = decl ~ parameterType;
         }
 
-        overload_decl = overload_decl ~ parameterType;
-        decl = decl ~ parameterType;
         parameter_already_placed = true;
     }
 
     void put_parameter_name(string parameterName)
     {
-        overload_decl = overload_decl ~ " " ~ parameterName;
-        decl = decl ~ " " ~ parameterName;
-
         if (parameter_already_placed_call)
         {
             call = call ~ ", ";
@@ -1018,13 +1020,25 @@ struct function_overload_info
         
         if (was_function_type)
         {
-            call = call ~ "igGenFuncC(" ~parameterName ~ ")";
+            string functionParameterTypeName = overload_name ~ "_" ~ parameterName;
+            string functionParameterType = "extern(C) alias " ~ functionParameterTypeName  ~ " = " ~ last_function_type ~ ";";
+            function_parameters ~= functionParameterType;
+
+            // Parameter Type part.
+            overload_decl = overload_decl ~ functionParameterTypeName;
+            decl = decl ~ functionParameterTypeName;
+
+            // Parameter name part.
+            call = call ~ parameterName;
             was_function_type = false;
         }
         else
         {
             call = call ~ parameterName;
         }
+
+        overload_decl = overload_decl ~ " " ~ parameterName;
+        decl = decl ~ " " ~ parameterName;
 
         parameter_already_placed_call = true;
     }
@@ -1039,8 +1053,11 @@ struct function_overload_info
     string overload_decl;
     string decl;
     string call;
+    string overload_name;
+    string last_function_type;
     string return_type = "";
     string function_ptr_type = "";
+    string[] function_parameters;
     bool parameter_already_placed = false;
     bool parameter_already_placed_call = false;
     bool was_function_type = false;
@@ -1322,11 +1339,18 @@ void write_imgui_file(
     // writing out the dlang overloaded functions:
     foreach(function_overload_info overload; infos) 
     {
+        foreach(functionParameter; overload.function_parameters) 
+        {
+            codeWriter.put_lines(functionParameter);
+            codeWriter.put_string("\n");
+        }
+
         codeWriter.put_lines("pragma(inline):");
         codeWriter.put_lines(overload.overload_decl);
         codeWriter.add_scope();
         codeWriter.put_lines(overload.call);
         codeWriter.remove_scope();
+        codeWriter.put_string("\n");
     }
 
     std.file.write("source/bindbc/imgui/bind/imgui.d", codeWriter.mBuilder.data);
