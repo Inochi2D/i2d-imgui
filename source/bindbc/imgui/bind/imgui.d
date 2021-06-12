@@ -300,19 +300,19 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         ImPoolIdx FreeIdx;
     }
 
-    enum ImGuiTableBgTarget{
+    enum ImGuiTableBgTarget {
         None = 0,
         RowBg0 = 1,
         RowBg1 = 2,
         CellBg = 3,
     }
 
-    enum ImGuiLayoutType{
+    enum ImGuiLayoutType {
         Horizontal = 0,
         Vertical = 1,
     }
 
-    enum ImGuiWindowDockStyleCol{
+    enum ImGuiWindowDockStyleCol {
         Text = 0,
         Tab = 1,
         TabHovered = 2,
@@ -322,13 +322,13 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         COUNT = 6,
     }
 
-    enum ImGuiNextItemDataFlags{
+    enum ImGuiNextItemDataFlags {
         None = 0,
         HasWidth = 1,
         HasOpen = 2,
     }
 
-    enum ImGuiItemStatusFlags{
+    enum ImGuiItemStatusFlags {
         None = 0,
         HoveredRect = 1,
         HasDisplayRect = 2,
@@ -343,12 +343,12 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         Focused = 768,
     }
 
-    enum ImGuiSliderFlagsPrivate{
-        ImGuiSliderFlags_Vertical = 1048576,
-        ImGuiSliderFlags_ReadOnly = 2097152,
+    enum ImGuiSliderFlagsI : ImGuiSliderFlags {
+        Vertical = cast(ImGuiSliderFlags)1048576,
+        ReadOnly = cast(ImGuiSliderFlags)2097152,
     }
 
-    enum ImGuiInputReadMode{
+    enum ImGuiInputReadMode {
         Down = 0,
         Pressed = 1,
         Released = 2,
@@ -357,60 +357,60 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         RepeatFast = 5,
     }
 
-    enum ImGuiMouseButton{
+    enum ImGuiMouseButton {
         Left = 0,
         Right = 1,
         Middle = 2,
         COUNT = 5,
     }
 
-    enum ImGuiDockNodeFlagsPrivate{
-        ImGuiDockNodeFlags_DockSpace = 1024,
-        ImGuiDockNodeFlags_CentralNode = 2048,
-        ImGuiDockNodeFlags_NoTabBar = 4096,
-        ImGuiDockNodeFlags_HiddenTabBar = 8192,
-        ImGuiDockNodeFlags_NoWindowMenuButton = 16384,
-        ImGuiDockNodeFlags_NoCloseButton = 32768,
-        ImGuiDockNodeFlags_NoDocking = 65536,
-        ImGuiDockNodeFlags_NoDockingSplitMe = 131072,
-        ImGuiDockNodeFlags_NoDockingSplitOther = 262144,
-        ImGuiDockNodeFlags_NoDockingOverMe = 524288,
-        ImGuiDockNodeFlags_NoDockingOverOther = 1048576,
-        ImGuiDockNodeFlags_NoResizeX = 2097152,
-        ImGuiDockNodeFlags_NoResizeY = 4194304,
-        ImGuiDockNodeFlags_SharedFlagsInheritMask_ = -1,
-        ImGuiDockNodeFlags_NoResizeFlagsMask_ = 6291488,
-        ImGuiDockNodeFlags_LocalFlagsMask_ = 6421616,
-        ImGuiDockNodeFlags_LocalFlagsTransferMask_ = 6420592,
-        ImGuiDockNodeFlags_SavedFlagsMask_ = 6421536,
+    enum ImGuiDockNodeFlagsI : ImGuiDockNodeFlags {
+        DockSpace = cast(ImGuiDockNodeFlags)1024,
+        CentralNode = cast(ImGuiDockNodeFlags)2048,
+        NoTabBar = cast(ImGuiDockNodeFlags)4096,
+        HiddenTabBar = cast(ImGuiDockNodeFlags)8192,
+        NoWindowMenuButton = cast(ImGuiDockNodeFlags)16384,
+        NoCloseButton = cast(ImGuiDockNodeFlags)32768,
+        NoDocking = cast(ImGuiDockNodeFlags)65536,
+        NoDockingSplitMe = cast(ImGuiDockNodeFlags)131072,
+        NoDockingSplitOther = cast(ImGuiDockNodeFlags)262144,
+        NoDockingOverMe = cast(ImGuiDockNodeFlags)524288,
+        NoDockingOverOther = cast(ImGuiDockNodeFlags)1048576,
+        NoResizeX = cast(ImGuiDockNodeFlags)2097152,
+        NoResizeY = cast(ImGuiDockNodeFlags)4194304,
+        SharedFlagsInheritMask_ = cast(ImGuiDockNodeFlags)-1,
+        NoResizeFlagsMask_ = cast(ImGuiDockNodeFlags)6291488,
+        LocalFlagsMask_ = cast(ImGuiDockNodeFlags)6421616,
+        LocalFlagsTransferMask_ = cast(ImGuiDockNodeFlags)6420592,
+        SavedFlagsMask_ = cast(ImGuiDockNodeFlags)6421536,
     }
 
-    enum ImGuiDataAuthority{
+    enum ImGuiDataAuthority {
         Auto = 0,
         DockNode = 1,
         Window = 2,
     }
 
-    enum ImGuiNavDirSourceFlags{
+    enum ImGuiNavDirSourceFlags {
         None = 0,
         Keyboard = 1,
         PadDPad = 2,
         PadLStick = 4,
     }
 
-    enum ImGuiSortDirection{
+    enum ImGuiSortDirection {
         None = 0,
         Ascending = 1,
         Descending = 2,
     }
 
-    enum ImGuiTabBarFlagsPrivate{
-        ImGuiTabBarFlags_DockNode = 1048576,
-        ImGuiTabBarFlags_IsFocused = 2097152,
-        ImGuiTabBarFlags_SaveSettings = 4194304,
+    enum ImGuiTabBarFlagsI : ImGuiTabBarFlags {
+        DockNode = cast(ImGuiTabBarFlags)1048576,
+        IsFocused = cast(ImGuiTabBarFlags)2097152,
+        SaveSettings = cast(ImGuiTabBarFlags)4194304,
     }
 
-    enum ImGuiTableColumnFlags{
+    enum ImGuiTableColumnFlags {
         None = 0,
         DefaultHide = 1,
         DefaultSort = 2,
@@ -438,12 +438,12 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         NoDirectResize_ = 1073741824,
     }
 
-    enum ImGuiTooltipFlags{
+    enum ImGuiTooltipFlags {
         None = 0,
         OverridePreviousTooltip = 1,
     }
 
-    enum ImGuiTabItemFlags{
+    enum ImGuiTabItemFlags {
         None = 0,
         UnsavedDocument = 1,
         SetSelected = 2,
@@ -455,13 +455,13 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         Trailing = 128,
     }
 
-    enum ImGuiPopupPositionPolicy{
+    enum ImGuiPopupPositionPolicy {
         Default = 0,
         ComboBox = 1,
         Tooltip = 2,
     }
 
-    enum ImGuiConfigFlags{
+    enum ImGuiConfigFlags {
         None = 0,
         NavEnableKeyboard = 1,
         NavEnableGamepad = 2,
@@ -477,7 +477,7 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         IsTouchScreen = 2097152,
     }
 
-    enum ImGuiKeyModFlags{
+    enum ImGuiKeyModFlags {
         None = 0,
         Ctrl = 1,
         Shift = 2,
@@ -485,13 +485,13 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         Super = 8,
     }
 
-    enum ImGuiDataTypePrivate{
-        ImGuiDataType_String = 11,
-        ImGuiDataType_Pointer = 12,
-        ImGuiDataType_ID = 13,
+    enum ImGuiDataTypeI : ImGuiDataType {
+        String = cast(ImGuiDataType)11,
+        Pointer = cast(ImGuiDataType)12,
+        ID = cast(ImGuiDataType)13,
     }
 
-    enum ImGuiNavInput{
+    enum ImGuiNavInput {
         Activate = 0,
         Cancel = 1,
         Input = 2,
@@ -517,12 +517,12 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         InternalStart_ = 16,
     }
 
-    enum ImGuiTableRowFlags{
+    enum ImGuiTableRowFlags {
         None = 0,
         Headers = 1,
     }
 
-    enum ImGuiDir{
+    enum ImGuiDir {
         None = -1,
         Left = 0,
         Right = 1,
@@ -531,7 +531,7 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         COUNT = 4,
     }
 
-    enum ImGuiNavMoveFlags{
+    enum ImGuiNavMoveFlags {
         None = 0,
         LoopX = 1,
         LoopY = 2,
@@ -542,12 +542,12 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         ScrollToEdge = 64,
     }
 
-    enum ImGuiTextFlags{
+    enum ImGuiTextFlags {
         None = 0,
         NoWidthForLargeClippedText = 1,
     }
 
-    enum ImGuiColorEditFlags{
+    enum ImGuiColorEditFlags {
         None = 0,
         NoAlpha = 2,
         NoPicker = 4,
@@ -579,7 +579,7 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         InputMask = 402653184,
     }
 
-    enum ImGuiTreeNodeFlags{
+    enum ImGuiTreeNodeFlags {
         None = 0,
         Selected = 1,
         Framed = 2,
@@ -598,7 +598,7 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         CollapsingHeader = 26,
     }
 
-    enum ImGuiContextHookType{
+    enum ImGuiContextHookType {
         NewFramePre = 0,
         NewFramePost = 1,
         EndFramePre = 2,
@@ -609,7 +609,7 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         PendingRemoval_ = 7,
     }
 
-    enum ImGuiTabBarFlags{
+    enum ImGuiTabBarFlags {
         None = 0,
         Reorderable = 1,
         AutoSelectNewTabs = 2,
@@ -623,7 +623,7 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         FittingPolicyDefault_ = 64,
     }
 
-    enum ImDrawListFlags{
+    enum ImDrawListFlags {
         None = 0,
         AntiAliasedLines = 1,
         AntiAliasedLinesUseTex = 2,
@@ -631,7 +631,7 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         AllowVtxOffset = 8,
     }
 
-    enum ImGuiWindowFlags{
+    enum ImGuiWindowFlags {
         None = 0,
         NoTitleBar = 1,
         NoResize = 2,
@@ -666,7 +666,7 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         DockNodeHost = 536870912,
     }
 
-    enum ImGuiCond{
+    enum ImGuiCond {
         None = 0,
         Always = 1,
         Once = 2,
@@ -674,7 +674,7 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         Appearing = 8,
     }
 
-    enum ImGuiSelectableFlags{
+    enum ImGuiSelectableFlags {
         None = 0,
         DontClosePopups = 1,
         SpanAllColumns = 2,
@@ -683,7 +683,7 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         AllowItemOverlap = 16,
     }
 
-    enum ImGuiNextWindowDataFlags{
+    enum ImGuiNextWindowDataFlags {
         None = 0,
         HasPos = 1,
         HasSize = 2,
@@ -698,7 +698,7 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         HasWindowClass = 1024,
     }
 
-    enum ImGuiStyleVar{
+    enum ImGuiStyleVar {
         Alpha = 0,
         WindowPadding = 1,
         WindowRounding = 2,
@@ -726,13 +726,13 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         COUNT = 24,
     }
 
-    enum ImGuiInputTextFlagsPrivate{
-        ImGuiInputTextFlags_Multiline = 67108864,
-        ImGuiInputTextFlags_NoMarkEdited = 134217728,
-        ImGuiInputTextFlags_MergedItem = 268435456,
+    enum ImGuiInputTextFlagsI : ImGuiInputTextFlags {
+        Multiline = cast(ImGuiInputTextFlags)67108864,
+        NoMarkEdited = cast(ImGuiInputTextFlags)134217728,
+        MergedItem = cast(ImGuiInputTextFlags)268435456,
     }
 
-    enum ImGuiComboFlags{
+    enum ImGuiComboFlags {
         None = 0,
         PopupAlignLeft = 1,
         HeightSmall = 2,
@@ -744,7 +744,7 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         HeightMask_ = 30,
     }
 
-    enum ImGuiBackendFlags{
+    enum ImGuiBackendFlags {
         None = 0,
         HasGamepad = 1,
         HasMouseCursors = 2,
@@ -755,14 +755,14 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         RendererHasViewports = 4096,
     }
 
-    enum ImFontAtlasFlags{
+    enum ImFontAtlasFlags {
         None = 0,
         NoPowerOfTwoHeight = 1,
         NoMouseCursors = 2,
         NoBakedLines = 4,
     }
 
-    enum ImGuiItemFlags{
+    enum ImGuiItemFlags {
         None = 0,
         NoTabStop = 1,
         ButtonRepeat = 2,
@@ -774,47 +774,47 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         ReadOnly = 128,
     }
 
-    enum ImGuiNavLayer{
+    enum ImGuiNavLayer {
         Main = 0,
         Menu = 1,
         COUNT = 2,
     }
 
-    enum ImGuiDockNodeState{
+    enum ImGuiDockNodeState {
         Unknown = 0,
         HostWindowHiddenBecauseSingleWindow = 1,
         HostWindowHiddenBecauseWindowsAreResizing = 2,
         HostWindowVisible = 3,
     }
 
-    enum ImGuiAxis{
+    enum ImGuiAxis {
         None = -1,
         X = 0,
         Y = 1,
     }
 
-    enum ImGuiButtonFlagsPrivate{
-        ImGuiButtonFlags_PressedOnClick = 16,
-        ImGuiButtonFlags_PressedOnClickRelease = 32,
-        ImGuiButtonFlags_PressedOnClickReleaseAnywhere = 64,
-        ImGuiButtonFlags_PressedOnRelease = 128,
-        ImGuiButtonFlags_PressedOnDoubleClick = 256,
-        ImGuiButtonFlags_PressedOnDragDropHold = 512,
-        ImGuiButtonFlags_Repeat = 1024,
-        ImGuiButtonFlags_FlattenChildren = 2048,
-        ImGuiButtonFlags_AllowItemOverlap = 4096,
-        ImGuiButtonFlags_DontClosePopups = 8192,
-        ImGuiButtonFlags_Disabled = 16384,
-        ImGuiButtonFlags_AlignTextBaseLine = 32768,
-        ImGuiButtonFlags_NoKeyModifiers = 65536,
-        ImGuiButtonFlags_NoHoldingActiveId = 131072,
-        ImGuiButtonFlags_NoNavFocus = 262144,
-        ImGuiButtonFlags_NoHoveredOnFocus = 524288,
-        ImGuiButtonFlags_PressedOnMask_ = 1008,
-        ImGuiButtonFlags_PressedOnDefault_ = 32,
+    enum ImGuiButtonFlagsI : ImGuiButtonFlags {
+        PressedOnClick = cast(ImGuiButtonFlags)16,
+        PressedOnClickRelease = cast(ImGuiButtonFlags)32,
+        PressedOnClickReleaseAnywhere = cast(ImGuiButtonFlags)64,
+        PressedOnRelease = cast(ImGuiButtonFlags)128,
+        PressedOnDoubleClick = cast(ImGuiButtonFlags)256,
+        PressedOnDragDropHold = cast(ImGuiButtonFlags)512,
+        Repeat = cast(ImGuiButtonFlags)1024,
+        FlattenChildren = cast(ImGuiButtonFlags)2048,
+        AllowItemOverlap = cast(ImGuiButtonFlags)4096,
+        DontClosePopups = cast(ImGuiButtonFlags)8192,
+        Disabled = cast(ImGuiButtonFlags)16384,
+        AlignTextBaseLine = cast(ImGuiButtonFlags)32768,
+        NoKeyModifiers = cast(ImGuiButtonFlags)65536,
+        NoHoldingActiveId = cast(ImGuiButtonFlags)131072,
+        NoNavFocus = cast(ImGuiButtonFlags)262144,
+        NoHoveredOnFocus = cast(ImGuiButtonFlags)524288,
+        PressedOnMask_ = cast(ImGuiButtonFlags)1008,
+        PressedOnDefault_ = cast(ImGuiButtonFlags)32,
     }
 
-    enum ImGuiDragDropFlags{
+    enum ImGuiDragDropFlags {
         None = 0,
         SourceNoPreviewTooltip = 1,
         SourceNoDisableHover = 2,
@@ -828,7 +828,7 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         AcceptPeekOnly = 3072,
     }
 
-    enum ImGuiLogType{
+    enum ImGuiLogType {
         None = 0,
         TTY = 1,
         File = 2,
@@ -836,13 +836,13 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         Clipboard = 4,
     }
 
-    enum ImGuiNavForward{
+    enum ImGuiNavForward {
         None = 0,
         ForwardQueued = 1,
         ForwardActive = 2,
     }
 
-    enum ImGuiNavHighlightFlags{
+    enum ImGuiNavHighlightFlags {
         None = 0,
         TypeDefault = 1,
         TypeThin = 2,
@@ -850,7 +850,7 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         NoRounding = 8,
     }
 
-    enum ImGuiTableFlags{
+    enum ImGuiTableFlags {
         None = 0,
         Resizable = 1,
         Reorderable = 2,
@@ -889,16 +889,16 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         SizingMask_ = 57344,
     }
 
-    enum ImGuiTreeNodeFlagsPrivate{
-        ImGuiTreeNodeFlags_ClipLabelForTrailingButton = 1048576,
+    enum ImGuiTreeNodeFlagsI : ImGuiTreeNodeFlags {
+        ClipLabelForTrailingButton = cast(ImGuiTreeNodeFlags)1048576,
     }
 
-    enum ImGuiItemAddFlags{
+    enum ImGuiItemAddFlags {
         None = 0,
         Focusable = 1,
     }
 
-    enum ImDrawFlags{
+    enum ImDrawFlags {
         None = 0,
         Closed = 1,
         RoundCornersTopLeft = 16,
@@ -915,7 +915,7 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         RoundCornersMask_ = 496,
     }
 
-    enum ImGuiFocusedFlags{
+    enum ImGuiFocusedFlags {
         None = 0,
         ChildWindows = 1,
         RootWindow = 2,
@@ -923,15 +923,15 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         RootAndChildWindows = 3,
     }
 
-    enum ImGuiTabItemFlagsPrivate{
-        ImGuiTabItemFlags_SectionMask_ = 192,
-        ImGuiTabItemFlags_NoCloseButton = 1048576,
-        ImGuiTabItemFlags_Button = 2097152,
-        ImGuiTabItemFlags_Unsorted = 4194304,
-        ImGuiTabItemFlags_Preview = 8388608,
+    enum ImGuiTabItemFlagsI : ImGuiTabItemFlags {
+        SectionMask_ = cast(ImGuiTabItemFlags)192,
+        NoCloseButton = cast(ImGuiTabItemFlags)1048576,
+        Button = cast(ImGuiTabItemFlags)2097152,
+        Unsorted = cast(ImGuiTabItemFlags)4194304,
+        Preview = cast(ImGuiTabItemFlags)8388608,
     }
 
-    enum ImGuiSliderFlags{
+    enum ImGuiSliderFlags {
         None = 0,
         AlwaysClamp = 16,
         Logarithmic = 32,
@@ -940,7 +940,7 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         InvalidMask_ = 1879048207,
     }
 
-    enum ImGuiDataType{
+    enum ImGuiDataType {
         S8 = 0,
         U8 = 1,
         S16 = 2,
@@ -954,7 +954,7 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         COUNT = 10,
     }
 
-    enum ImGuiKey{
+    enum ImGuiKey {
         Tab = 0,
         LeftArrow = 1,
         RightArrow = 2,
@@ -980,7 +980,7 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         COUNT = 22,
     }
 
-    enum ImGuiCol{
+    enum ImGuiCol {
         Text = 0,
         TextDisabled = 1,
         WindowBg = 2,
@@ -1039,7 +1039,7 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         COUNT = 55,
     }
 
-    enum ImGuiButtonFlags{
+    enum ImGuiButtonFlags {
         None = 0,
         MouseButtonLeft = 1,
         MouseButtonRight = 2,
@@ -1048,7 +1048,7 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         MouseButtonDefault_ = 1,
     }
 
-    enum ImGuiViewportFlags{
+    enum ImGuiViewportFlags {
         None = 0,
         IsPlatformWindow = 1,
         IsPlatformMonitor = 2,
@@ -1065,17 +1065,17 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         CanHostOtherWindows = 4096,
     }
 
-    enum ImGuiSelectableFlagsPrivate{
-        ImGuiSelectableFlags_NoHoldingActiveID = 1048576,
-        ImGuiSelectableFlags_SelectOnClick = 2097152,
-        ImGuiSelectableFlags_SelectOnRelease = 4194304,
-        ImGuiSelectableFlags_SpanAvailWidth = 8388608,
-        ImGuiSelectableFlags_DrawHoveredWhenHeld = 16777216,
-        ImGuiSelectableFlags_SetNavIdOnHover = 33554432,
-        ImGuiSelectableFlags_NoPadWithHalfSpacing = 67108864,
+    enum ImGuiSelectableFlagsI : ImGuiSelectableFlags {
+        NoHoldingActiveID = cast(ImGuiSelectableFlags)1048576,
+        SelectOnClick = cast(ImGuiSelectableFlags)2097152,
+        SelectOnRelease = cast(ImGuiSelectableFlags)4194304,
+        SpanAvailWidth = cast(ImGuiSelectableFlags)8388608,
+        DrawHoveredWhenHeld = cast(ImGuiSelectableFlags)16777216,
+        SetNavIdOnHover = cast(ImGuiSelectableFlags)33554432,
+        NoPadWithHalfSpacing = cast(ImGuiSelectableFlags)67108864,
     }
 
-    enum ImGuiInputSource{
+    enum ImGuiInputSource {
         None = 0,
         Mouse = 1,
         Keyboard = 2,
@@ -1085,7 +1085,7 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         COUNT = 6,
     }
 
-    enum ImGuiMouseCursor{
+    enum ImGuiMouseCursor {
         None = -1,
         Arrow = 0,
         TextInput = 1,
@@ -1099,19 +1099,19 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         COUNT = 9,
     }
 
-    enum ImGuiPlotType{
+    enum ImGuiPlotType {
         Lines = 0,
         Histogram = 1,
     }
 
-    enum ImGuiDockRequestType{
+    enum ImGuiDockRequestType {
         None = 0,
         Dock = 1,
         Undock = 2,
         Split = 3,
     }
 
-    enum ImGuiDockNodeFlags{
+    enum ImGuiDockNodeFlags {
         None = 0,
         KeepAliveOnly = 1,
         NoDockingInCentralNode = 4,
@@ -1121,7 +1121,7 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         AutoHideTabBar = 64,
     }
 
-    enum ImGuiInputTextFlags{
+    enum ImGuiInputTextFlags {
         None = 0,
         CharsDecimal = 1,
         CharsHexadecimal = 2,
@@ -1145,7 +1145,7 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         CallbackEdit = 524288,
     }
 
-    enum ImGuiPopupFlags{
+    enum ImGuiPopupFlags {
         None = 0,
         MouseButtonLeft = 0,
         MouseButtonRight = 1,
@@ -1159,7 +1159,7 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         AnyPopup = 384,
     }
 
-    enum ImGuiOldColumnFlags{
+    enum ImGuiOldColumnFlags {
         None = 0,
         NoBorder = 1,
         NoResize = 2,
@@ -1168,14 +1168,14 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         GrowParentContentsSize = 16,
     }
 
-    enum ImGuiSeparatorFlags{
+    enum ImGuiSeparatorFlags {
         None = 0,
         Horizontal = 1,
         Vertical = 2,
         SpanAllColumns = 4,
     }
 
-    enum ImGuiHoveredFlags{
+    enum ImGuiHoveredFlags {
         None = 0,
         ChildWindows = 1,
         RootWindow = 2,

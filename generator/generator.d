@@ -217,11 +217,20 @@ struct code_writer
         add_scope();
     }
 
-    void add_enum(string enumName)
+    void add_enum(string enumName, string enumBaseType = "")
     {
         write_indent();
         mBuilder.put("enum ");
         mBuilder.put(enumName);
+        mBuilder.put(" ");
+
+        if (enumBaseType.length != 0)
+        {
+            mBuilder.put(": ");
+            mBuilder.put(enumBaseType);
+            mBuilder.put(" ");
+        }
+
         add_scope();
     }
     
@@ -815,27 +824,39 @@ void write_enums(code_writer codeWriter, JSONValue definitions)
 
     foreach (string enumName, JSONValue enumValues; enums) 
     {
-        string adjustedName = enumName;
+        string enumBaseType = "";
+        string adjustedEnumTypeName = enumName;
 
-        if ('_' == adjustedName[adjustedName.length - 1])
-            adjustedName = adjustedName[0 .. adjustedName.length - 1];
+        if ('_' == adjustedEnumTypeName[adjustedEnumTypeName.length - 1])
+            adjustedEnumTypeName = adjustedEnumTypeName[0 .. adjustedEnumTypeName.length - 1];
 
-        codeWriter.add_enum(adjustedName);
-        gEnumType[adjustedName] = enum_values();
+        if (adjustedEnumTypeName.endsWith("Private"))
+        {
+            adjustedEnumTypeName = adjustedEnumTypeName[0 .. adjustedEnumTypeName.length - "Private".length] ~ "I"; 
+            enumBaseType = adjustedEnumTypeName[0 .. adjustedEnumTypeName.length - 1];
+        }
+
+        codeWriter.add_enum(adjustedEnumTypeName, enumBaseType);
+        gEnumType[adjustedEnumTypeName] = enum_values();
 
         foreach (JSONValue value; enumValues.array)
         {
             auto valueName = value["name"].str;
             if (valueName.startsWith(enumName))
                 valueName = valueName[enumName.length .. valueName.length];
+            else if (valueName.startsWith(enumBaseType))
+                valueName = valueName[enumBaseType.length .. valueName.length];
 
             if (valueName.startsWith("_"))
                 valueName = valueName[1 .. valueName.length];
 
-            gConvertedEnumValue[value["name"].str] = adjustedName ~ "." ~ valueName;
+            gConvertedEnumValue[value["name"].str] = adjustedEnumTypeName ~ "." ~ valueName;
 
-            codeWriter.put_lines(format("%s = %d,\n", valueName, value["calc_value"].integer));
-            gEnumType[adjustedName].values[to!string(value["calc_value"].integer)] = valueName; // should cache the first gEnumType[adjustedName] call, but don't know how to take it by ref.
+            if (enumBaseType.length == 0)
+                codeWriter.put_lines(format("%s = %d,\n", valueName, value["calc_value"].integer));
+            else
+                codeWriter.put_lines(format("%s = cast(%s)%d,\n", valueName, enumBaseType, value["calc_value"].integer));
+            gEnumType[adjustedEnumTypeName].values[to!string(value["calc_value"].integer)] = valueName; // should cache the first gEnumType[adjustedEnumTypeName] call, but don't know how to take it by ref.
         }
 
         codeWriter.remove_scope();
