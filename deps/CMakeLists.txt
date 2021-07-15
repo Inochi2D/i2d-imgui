@@ -10,6 +10,9 @@ set(OutputDirectory ${CMAKE_CURRENT_LIST_DIR}/../lib)
 
 option(BUILD_SHARED_LIBS     "Build shared instead of static libraries." ON)
 
+add_subdirectory(freetype)
+
+set(IMGUI_FREETYPE "yes" CACHE STRING "Build with freetype library")
 set(IMGUI_SDL "yes" CACHE STRING "Build with SDL")
 add_subdirectory(cimgui)
 
