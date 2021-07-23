@@ -312,6 +312,20 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         Vertical = 1,
     }
 
+    enum ImGuiPopupFlags {
+        None = 0,
+        MouseButtonLeft = 0,
+        MouseButtonRight = 1,
+        MouseButtonMiddle = 2,
+        MouseButtonMask_ = 31,
+        MouseButtonDefault_ = 1,
+        NoOpenOverExistingPopup = 32,
+        NoOpenOverItems = 64,
+        AnyPopupId = 128,
+        AnyPopupLevel = 256,
+        AnyPopup = 384,
+    }
+
     enum ImGuiWindowDockStyleCol {
         Text = 0,
         Tab = 1,
@@ -1145,18 +1159,17 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
         CallbackEdit = 524288,
     }
 
-    enum ImGuiPopupFlags {
-        None = 0,
-        MouseButtonLeft = 0,
-        MouseButtonRight = 1,
-        MouseButtonMiddle = 2,
-        MouseButtonMask_ = 31,
-        MouseButtonDefault_ = 1,
-        NoOpenOverExistingPopup = 32,
-        NoOpenOverItems = 64,
-        AnyPopupId = 128,
-        AnyPopupLevel = 256,
-        AnyPopup = 384,
+    enum ImGuiFreeTypeBuilderFlags {
+        NoHinting = 1,
+        NoAutoHint = 2,
+        ForceAutoHint = 4,
+        LightHinting = 8,
+        MonoHinting = 16,
+        Bold = 32,
+        Oblique = 64,
+        Monochrome = 128,
+        LoadColor = 256,
+        Bitmap = 512,
     }
 
     enum ImGuiOldColumnFlags {
@@ -3369,6 +3382,7 @@ version (BindImGui_Static) {
         bool igTreeNode_Str(const(char)* label);
         bool igTreeNode_StrStr(const(char)* str_id, const(char)* fmt, ...);
         bool igTreeNode_Ptr(const void* ptr_id, const(char)* fmt, ...);
+        void ImGuiFreeType_SetAllocatorFunctions(void* function(size_t sz,void* user_data) alloc_func, void function(void* ptr,void* user_data) free_func, void* user_data = null);
         void igPopClipRect();
         void ImDrawList_PushClipRect(ImDrawList* self, ImVec2 clip_rect_min, ImVec2 clip_rect_max, bool intersect_with_current_clip_rect = false);
         void igImBitArrayClearBit(ImU32* arr, int n);
@@ -3549,6 +3563,7 @@ version (BindImGui_Static) {
         void igBeginTooltip();
         void igOpenPopupOnItemClick(const(char)* str_id = null, ImGuiPopupFlags popup_flags = ImGuiPopupFlags.MouseButtonDefault_);
         void ImDrawListSplitter_Merge(ImDrawListSplitter* self, ImDrawList* draw_list);
+        const ImFontBuilderIO* ImGuiFreeType_GetBuilderForFreeType();
         float ImGuiWindow_MenuBarHeight(ImGuiWindow* self);
         void ImColor_HSV(ImColor* pOut, float h, float s, float v, float a = 1.0f);
         bool igBeginTableEx(const(char)* name, ImGuiID id, int columns_count, ImGuiTableFlags flags = ImGuiTableFlags.None, const ImVec2 outer_size = ImVec2(0,0), float inner_width = 0.0f);
@@ -4611,6 +4626,7 @@ version (BindImGui_Static) {
         alias pigTreeNode_Str = bool function(const(char)* label);
         alias pigTreeNode_StrStr = bool function(const(char)* str_id, const(char)* fmt, ...);
         alias pigTreeNode_Ptr = bool function(const void* ptr_id, const(char)* fmt, ...);
+        alias pImGuiFreeType_SetAllocatorFunctions = void function(void* function(size_t sz,void* user_data) alloc_func, void function(void* ptr,void* user_data) free_func, void* user_data = null);
         alias pigPopClipRect = void function();
         alias pImDrawList_PushClipRect = void function(ImDrawList* self, ImVec2 clip_rect_min, ImVec2 clip_rect_max, bool intersect_with_current_clip_rect = false);
         alias pigImBitArrayClearBit = void function(ImU32* arr, int n);
@@ -4791,6 +4807,7 @@ version (BindImGui_Static) {
         alias pigBeginTooltip = void function();
         alias pigOpenPopupOnItemClick = void function(const(char)* str_id = null, ImGuiPopupFlags popup_flags = ImGuiPopupFlags.MouseButtonDefault_);
         alias pImDrawListSplitter_Merge = void function(ImDrawListSplitter* self, ImDrawList* draw_list);
+        alias pImGuiFreeType_GetBuilderForFreeType = const ImFontBuilderIO* function();
         alias pImGuiWindow_MenuBarHeight = float function(ImGuiWindow* self);
         alias pImColor_HSV = void function(ImColor* pOut, float h, float s, float v, float a = 1.0f);
         alias pigBeginTableEx = bool function(const(char)* name, ImGuiID id, int columns_count, ImGuiTableFlags flags = ImGuiTableFlags.None, const ImVec2 outer_size = ImVec2(0,0), float inner_width = 0.0f);
@@ -5802,6 +5819,7 @@ version (BindImGui_Static) {
             pigTreeNode_Str igTreeNode_Str;
             pigTreeNode_StrStr igTreeNode_StrStr;
             pigTreeNode_Ptr igTreeNode_Ptr;
+            pImGuiFreeType_SetAllocatorFunctions ImGuiFreeType_SetAllocatorFunctions;
             pigPopClipRect igPopClipRect;
             pImDrawList_PushClipRect ImDrawList_PushClipRect;
             pigImBitArrayClearBit igImBitArrayClearBit;
@@ -5982,6 +6000,7 @@ version (BindImGui_Static) {
             pigBeginTooltip igBeginTooltip;
             pigOpenPopupOnItemClick igOpenPopupOnItemClick;
             pImDrawListSplitter_Merge ImDrawListSplitter_Merge;
+            pImGuiFreeType_GetBuilderForFreeType ImGuiFreeType_GetBuilderForFreeType;
             pImGuiWindow_MenuBarHeight ImGuiWindow_MenuBarHeight;
             pImColor_HSV ImColor_HSV;
             pigBeginTableEx igBeginTableEx;

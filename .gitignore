@@ -1,6 +1,7 @@
 /.dub/
 lib/
 build/
+buildx86/
 .dub/
 .vscode/
 

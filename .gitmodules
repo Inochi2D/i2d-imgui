@@ -10,3 +10,6 @@
 [submodule "deps/cimgui"]
 	path = deps/cimgui
 	url = https://github.com/Inochi2D/cimgui.git
+[submodule "deps/freetype"]
+	path = deps/freetype
+	url = https://github.com/freetype/freetype.git

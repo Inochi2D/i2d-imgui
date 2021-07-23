@@ -814,6 +814,7 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&igTreeNode_Str, "igTreeNode_Str");
     lib.bindSymbol(cast(void**)&igTreeNode_StrStr, "igTreeNode_StrStr");
     lib.bindSymbol(cast(void**)&igTreeNode_Ptr, "igTreeNode_Ptr");
+    lib.bindSymbol(cast(void**)&ImGuiFreeType_SetAllocatorFunctions, "ImGuiFreeType_SetAllocatorFunctions");
     lib.bindSymbol(cast(void**)&igPopClipRect, "igPopClipRect");
     lib.bindSymbol(cast(void**)&ImDrawList_PushClipRect, "ImDrawList_PushClipRect");
     lib.bindSymbol(cast(void**)&igImBitArrayClearBit, "igImBitArrayClearBit");
@@ -994,6 +995,7 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&igBeginTooltip, "igBeginTooltip");
     lib.bindSymbol(cast(void**)&igOpenPopupOnItemClick, "igOpenPopupOnItemClick");
     lib.bindSymbol(cast(void**)&ImDrawListSplitter_Merge, "ImDrawListSplitter_Merge");
+    lib.bindSymbol(cast(void**)&ImGuiFreeType_GetBuilderForFreeType, "ImGuiFreeType_GetBuilderForFreeType");
     lib.bindSymbol(cast(void**)&ImGuiWindow_MenuBarHeight, "ImGuiWindow_MenuBarHeight");
     lib.bindSymbol(cast(void**)&ImColor_HSV, "ImColor_HSV");
     lib.bindSymbol(cast(void**)&igBeginTableEx, "igBeginTableEx");

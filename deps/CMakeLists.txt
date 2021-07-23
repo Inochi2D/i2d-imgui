@@ -12,7 +12,9 @@ option(BUILD_SHARED_LIBS     "Build shared instead of static libraries." ON)
 
 add_subdirectory(freetype)
 
+set(IMGUI_FREETYPE_IN_TREE "yes" CACHE STRING "freetype library is being build in-tree")
 set(IMGUI_FREETYPE "yes" CACHE STRING "Build with freetype library")
+set(IMGUI_SDL_IN_TREE "yes" CACHE STRING "SDL library is built in-tree")
 set(IMGUI_SDL "yes" CACHE STRING "Build with SDL")
 add_subdirectory(cimgui)
 
