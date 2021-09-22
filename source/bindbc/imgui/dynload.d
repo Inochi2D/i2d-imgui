@@ -50,7 +50,7 @@ bool loadImGuiSupport()
 
 bool loadImGuiSupport(const(char)* libName)
 {
-    lib = load("imgui_gl_loader.dll");
+    lib = load(libName);
     if(lib == invalidHandle) {
         return false;
     }
