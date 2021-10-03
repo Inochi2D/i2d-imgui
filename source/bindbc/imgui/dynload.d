@@ -14,55 +14,6 @@ private {
     ImGuiSupport loadedVersion;
 }
 
-alias pInitOpenGLForImGui = void function();
-
-__gshared {
-pInitOpenGLForImGui InitOpenGLForImGui;
-}
-
-bool loadImGuiSupport()
-{
-    // #1778 prevents me from using static arrays here :(
-    version(Windows) {
-        const(char)[][1] libNames = [
-            "imgui_gl_loader.dll",
-        ];
-    }
-    else version(OSX) {
-        const(char)[][1] libNames = [
-            "imgui_gl_loader.dylib"
-        ];
-    }
-    else version(Posix) {
-        const(char)[][1] libNames = [
-            "imgui_gl_loader.so"
-        ];
-    }
-    else static assert(0, "bindbc-ImGui is not yet supported on this platform.");
-
-    bool ret;
-    foreach(name; libNames) {
-        ret = loadImGuiSupport(name.ptr);
-        if(!ret) break;
-    }
-    return ret;
-}
-
-bool loadImGuiSupport(const(char)* libName)
-{
-    lib = load(libName);
-    if(lib == invalidHandle) {
-        return false;
-    }
-
-    auto errCount = errorCount();
-    loadedVersion = ImGuiSupport.badLibrary;
-
-    lib.bindSymbol(cast(void**)&InitOpenGLForImGui, "InitOpenGLForImGui");
-
-    return true;
-}
-
 void unloadImGui()
 {
     if(lib != invalidHandle) {
@@ -104,8 +55,6 @@ ImGuiSupport loadImGui()
         if(ret != ImGuiSupport.noLibrary) break;
     }
 
-    loadImGuiSupport();
-
     return ret;
 }
 
@@ -119,12 +68,13 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&ImDrawList_AddCircleFilled, "ImDrawList_AddCircleFilled");
     lib.bindSymbol(cast(void**)&ImGuiPlatformIO_ImGuiPlatformIO, "ImGuiPlatformIO_ImGuiPlatformIO");
     lib.bindSymbol(cast(void**)&igDockContextQueueUndockWindow, "igDockContextQueueUndockWindow");
+    lib.bindSymbol(cast(void**)&ImGuiComboPreviewData_ImGuiComboPreviewData, "ImGuiComboPreviewData_ImGuiComboPreviewData");
     lib.bindSymbol(cast(void**)&igEndTable, "igEndTable");
+    lib.bindSymbol(cast(void**)&ImFontAtlas_GetGlyphRangesChineseFull, "ImFontAtlas_GetGlyphRangesChineseFull");
+    lib.bindSymbol(cast(void**)&igBringWindowToDisplayFront, "igBringWindowToDisplayFront");
     lib.bindSymbol(cast(void**)&igGetForegroundDrawList_Nil, "igGetForegroundDrawList_Nil");
     lib.bindSymbol(cast(void**)&igGetForegroundDrawList_ViewportPtr, "igGetForegroundDrawList_ViewportPtr");
     lib.bindSymbol(cast(void**)&igGetForegroundDrawList_WindowPtr, "igGetForegroundDrawList_WindowPtr");
-    lib.bindSymbol(cast(void**)&ImFontAtlas_GetGlyphRangesChineseFull, "ImFontAtlas_GetGlyphRangesChineseFull");
-    lib.bindSymbol(cast(void**)&igBringWindowToDisplayFront, "igBringWindowToDisplayFront");
     lib.bindSymbol(cast(void**)&igInitialize, "igInitialize");
     lib.bindSymbol(cast(void**)&ImFontAtlas_AddCustomRectRegular, "ImFontAtlas_AddCustomRectRegular");
     lib.bindSymbol(cast(void**)&igIsMouseDragPastThreshold, "igIsMouseDragPastThreshold");
@@ -163,12 +113,14 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&ImGuiTextBuffer_c_str, "ImGuiTextBuffer_c_str");
     lib.bindSymbol(cast(void**)&igTabBarFindTabByID, "igTabBarFindTabByID");
     lib.bindSymbol(cast(void**)&igDataTypeApplyOpFromText, "igDataTypeApplyOpFromText");
+    lib.bindSymbol(cast(void**)&igNavMoveRequestSubmit, "igNavMoveRequestSubmit");
     lib.bindSymbol(cast(void**)&ImGuiInputTextState_destroy, "ImGuiInputTextState_destroy");
+    lib.bindSymbol(cast(void**)&igBeginComboPreview, "igBeginComboPreview");
     lib.bindSymbol(cast(void**)&igGetDrawData, "igGetDrawData");
-    lib.bindSymbol(cast(void**)&igRenderRectFilledRangeH, "igRenderRectFilledRangeH");
     lib.bindSymbol(cast(void**)&igPopItemWidth, "igPopItemWidth");
     lib.bindSymbol(cast(void**)&igIsWindowAppearing, "igIsWindowAppearing");
     lib.bindSymbol(cast(void**)&igGetAllocatorFunctions, "igGetAllocatorFunctions");
+    lib.bindSymbol(cast(void**)&igRenderRectFilledRangeH, "igRenderRectFilledRangeH");
     lib.bindSymbol(cast(void**)&igSetWindowDock, "igSetWindowDock");
     lib.bindSymbol(cast(void**)&igImFontAtlasGetBuilderForStbTruetype, "igImFontAtlasGetBuilderForStbTruetype");
     lib.bindSymbol(cast(void**)&igFindOrCreateColumns, "igFindOrCreateColumns");
@@ -213,8 +165,8 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&igButtonEx, "igButtonEx");
     lib.bindSymbol(cast(void**)&igTextEx, "igTextEx");
     lib.bindSymbol(cast(void**)&ImGuiPayload_IsPreview, "ImGuiPayload_IsPreview");
-    lib.bindSymbol(cast(void**)&igItemFocusable, "igItemFocusable");
     lib.bindSymbol(cast(void**)&igLabelTextV, "igLabelTextV");
+    lib.bindSymbol(cast(void**)&igNavInitRequestApplyResult, "igNavInitRequestApplyResult");
     lib.bindSymbol(cast(void**)&igImStrSkipBlank, "igImStrSkipBlank");
     lib.bindSymbol(cast(void**)&igPushColumnsBackground, "igPushColumnsBackground");
     lib.bindSymbol(cast(void**)&ImGuiWindow_ImGuiWindow, "ImGuiWindow_ImGuiWindow");
@@ -323,10 +275,10 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&igStyleColorsClassic, "igStyleColorsClassic");
     lib.bindSymbol(cast(void**)&ImGuiTabBar_GetTabOrder, "ImGuiTabBar_GetTabOrder");
     lib.bindSymbol(cast(void**)&igBegin, "igBegin");
-    lib.bindSymbol(cast(void**)&ImGuiLastItemDataBackup_ImGuiLastItemDataBackup, "ImGuiLastItemDataBackup_ImGuiLastItemDataBackup");
+    lib.bindSymbol(cast(void**)&igButton, "igButton");
     lib.bindSymbol(cast(void**)&igBeginMenuBar, "igBeginMenuBar");
     lib.bindSymbol(cast(void**)&igDataTypeClamp, "igDataTypeClamp");
-    lib.bindSymbol(cast(void**)&igButton, "igButton");
+    lib.bindSymbol(cast(void**)&igRenderText, "igRenderText");
     lib.bindSymbol(cast(void**)&ImFontGlyphRangesBuilder_Clear, "ImFontGlyphRangesBuilder_Clear");
     lib.bindSymbol(cast(void**)&ImGuiMenuColumns_destroy, "ImGuiMenuColumns_destroy");
     lib.bindSymbol(cast(void**)&igImStrncpy, "igImStrncpy");
@@ -354,7 +306,6 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&igInvisibleButton, "igInvisibleButton");
     lib.bindSymbol(cast(void**)&igScaleWindowsInViewport, "igScaleWindowsInViewport");
     lib.bindSymbol(cast(void**)&igRenderMouseCursor, "igRenderMouseCursor");
-    lib.bindSymbol(cast(void**)&igRenderText, "igRenderText");
     lib.bindSymbol(cast(void**)&igImFontAtlasBuildInit, "igImFontAtlasBuildInit");
     lib.bindSymbol(cast(void**)&igTextColored, "igTextColored");
     lib.bindSymbol(cast(void**)&igSliderScalar, "igSliderScalar");
@@ -380,6 +331,7 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&ImFont_ImFont, "ImFont_ImFont");
     lib.bindSymbol(cast(void**)&igEndTabItem, "igEndTabItem");
     lib.bindSymbol(cast(void**)&igVSliderFloat, "igVSliderFloat");
+    lib.bindSymbol(cast(void**)&ImGuiIO_ClearInputKeys, "ImGuiIO_ClearInputKeys");
     lib.bindSymbol(cast(void**)&igRenderArrowPointingAt, "igRenderArrowPointingAt");
     lib.bindSymbol(cast(void**)&igEndGroup, "igEndGroup");
     lib.bindSymbol(cast(void**)&igPlotLines_FloatPtr, "igPlotLines_FloatPtr");
@@ -414,6 +366,7 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&igSmallButton, "igSmallButton");
     lib.bindSymbol(cast(void**)&ImGuiWindow_destroy, "ImGuiWindow_destroy");
     lib.bindSymbol(cast(void**)&ImGuiTableColumn_ImGuiTableColumn, "ImGuiTableColumn_ImGuiTableColumn");
+    lib.bindSymbol(cast(void**)&ImGuiComboPreviewData_destroy, "ImGuiComboPreviewData_destroy");
     lib.bindSymbol(cast(void**)&igTableGetColumnResizeID, "igTableGetColumnResizeID");
     lib.bindSymbol(cast(void**)&igCombo_Str_arr, "igCombo_Str_arr");
     lib.bindSymbol(cast(void**)&igCombo_Str, "igCombo_Str");
@@ -443,7 +396,7 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&igImSaturate, "igImSaturate");
     lib.bindSymbol(cast(void**)&ImDrawList_PrimRect, "ImDrawList_PrimRect");
     lib.bindSymbol(cast(void**)&igImLinearSweep, "igImLinearSweep");
-    lib.bindSymbol(cast(void**)&igUpdateMouseMovingWindowNewFrame, "igUpdateMouseMovingWindowNewFrame");
+    lib.bindSymbol(cast(void**)&igItemInputable, "igItemInputable");
     lib.bindSymbol(cast(void**)&ImDrawList_AddRectFilled, "ImDrawList_AddRectFilled");
     lib.bindSymbol(cast(void**)&ImGuiPopupData_destroy, "ImGuiPopupData_destroy");
     lib.bindSymbol(cast(void**)&igFindSettingsHandler, "igFindSettingsHandler");
@@ -451,6 +404,7 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&igBeginDocked, "igBeginDocked");
     lib.bindSymbol(cast(void**)&igSetColorEditOptions, "igSetColorEditOptions");
     lib.bindSymbol(cast(void**)&igIsAnyMouseDown, "igIsAnyMouseDown");
+    lib.bindSymbol(cast(void**)&igUpdateMouseMovingWindowNewFrame, "igUpdateMouseMovingWindowNewFrame");
     lib.bindSymbol(cast(void**)&ImGuiDockContext_ImGuiDockContext, "ImGuiDockContext_ImGuiDockContext");
     lib.bindSymbol(cast(void**)&ImGuiTextFilter_Build, "ImGuiTextFilter_Build");
     lib.bindSymbol(cast(void**)&igTabItemCalcSize, "igTabItemCalcSize");
@@ -507,6 +461,7 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&ImDrawList_ChannelsMerge, "ImDrawList_ChannelsMerge");
     lib.bindSymbol(cast(void**)&igSetAllocatorFunctions, "igSetAllocatorFunctions");
     lib.bindSymbol(cast(void**)&ImFont_FindGlyph, "ImFont_FindGlyph");
+    lib.bindSymbol(cast(void**)&igErrorCheckEndWindowRecover, "igErrorCheckEndWindowRecover");
     lib.bindSymbol(cast(void**)&igDockNodeGetDepth, "igDockNodeGetDepth");
     lib.bindSymbol(cast(void**)&igDebugStartItemPicker, "igDebugStartItemPicker");
     lib.bindSymbol(cast(void**)&ImGuiNextWindowData_destroy, "ImGuiNextWindowData_destroy");
@@ -515,6 +470,7 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&ImRect_Overlaps, "ImRect_Overlaps");
     lib.bindSymbol(cast(void**)&igCaptureMouseFromApp, "igCaptureMouseFromApp");
     lib.bindSymbol(cast(void**)&igAddContextHook, "igAddContextHook");
+    lib.bindSymbol(cast(void**)&ImGuiInputTextState_GetCursorPos, "ImGuiInputTextState_GetCursorPos");
     lib.bindSymbol(cast(void**)&igImHashData, "igImHashData");
     lib.bindSymbol(cast(void**)&ImGuiViewportP_GetBuildWorkRect, "ImGuiViewportP_GetBuildWorkRect");
     lib.bindSymbol(cast(void**)&ImGuiInputTextCallbackData_InsertChars, "ImGuiInputTextCallbackData_InsertChars");
@@ -544,13 +500,13 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&igInputText, "igInputText");
     lib.bindSymbol(cast(void**)&igTreeNodeExV_Str, "igTreeNodeExV_Str");
     lib.bindSymbol(cast(void**)&igTreeNodeExV_Ptr, "igTreeNodeExV_Ptr");
-    lib.bindSymbol(cast(void**)&igTableSetColumnSortDirection, "igTableSetColumnSortDirection");
     lib.bindSymbol(cast(void**)&igIsAnyItemFocused, "igIsAnyItemFocused");
     lib.bindSymbol(cast(void**)&ImDrawDataBuilder_Clear, "ImDrawDataBuilder_Clear");
     lib.bindSymbol(cast(void**)&ImVec2ih_ImVec2ih_Nil, "ImVec2ih_ImVec2ih_Nil");
     lib.bindSymbol(cast(void**)&ImVec2ih_ImVec2ih_short, "ImVec2ih_ImVec2ih_short");
     lib.bindSymbol(cast(void**)&ImVec2ih_ImVec2ih_Vec2, "ImVec2ih_ImVec2ih_Vec2");
     lib.bindSymbol(cast(void**)&igDockContextQueueDock, "igDockContextQueueDock");
+    lib.bindSymbol(cast(void**)&igTableSetColumnSortDirection, "igTableSetColumnSortDirection");
     lib.bindSymbol(cast(void**)&ImVec1_ImVec1_Nil, "ImVec1_ImVec1_Nil");
     lib.bindSymbol(cast(void**)&ImVec1_ImVec1_Float, "ImVec1_ImVec1_Float");
     lib.bindSymbol(cast(void**)&igCalcItemSize, "igCalcItemSize");
@@ -628,16 +584,16 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&ImDrawList__PopUnusedDrawCmd, "ImDrawList__PopUnusedDrawCmd");
     lib.bindSymbol(cast(void**)&ImDrawList_AddImageRounded, "ImDrawList_AddImageRounded");
     lib.bindSymbol(cast(void**)&ImGuiStyleMod_destroy, "ImGuiStyleMod_destroy");
+    lib.bindSymbol(cast(void**)&ImGuiMenuColumns_CalcNextTotalWidth, "ImGuiMenuColumns_CalcNextTotalWidth");
     lib.bindSymbol(cast(void**)&ImGuiStorage_BuildSortByKey, "ImGuiStorage_BuildSortByKey");
-    lib.bindSymbol(cast(void**)&igTableSetupDrawChannels, "igTableSetupDrawChannels");
     lib.bindSymbol(cast(void**)&ImDrawList_PathRect, "ImDrawList_PathRect");
     lib.bindSymbol(cast(void**)&igInputTextEx, "igInputTextEx");
     lib.bindSymbol(cast(void**)&igColorEdit3, "igColorEdit3");
     lib.bindSymbol(cast(void**)&ImColor_destroy, "ImColor_destroy");
     lib.bindSymbol(cast(void**)&igIsItemToggledSelection, "igIsItemToggledSelection");
-    lib.bindSymbol(cast(void**)&ImGuiDockNode_GetMergedFlags, "ImGuiDockNode_GetMergedFlags");
-    lib.bindSymbol(cast(void**)&igIsKeyPressedMap, "igIsKeyPressedMap");
     lib.bindSymbol(cast(void**)&igTabItemEx, "igTabItemEx");
+    lib.bindSymbol(cast(void**)&igIsKeyPressedMap, "igIsKeyPressedMap");
+    lib.bindSymbol(cast(void**)&igTableSetupDrawChannels, "igTableSetupDrawChannels");
     lib.bindSymbol(cast(void**)&igLogFinish, "igLogFinish");
     lib.bindSymbol(cast(void**)&igGetItemRectSize, "igGetItemRectSize");
     lib.bindSymbol(cast(void**)&igGetWindowResizeCornerID, "igGetWindowResizeCornerID");
@@ -660,7 +616,6 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&igDockBuilderCopyDockSpace, "igDockBuilderCopyDockSpace");
     lib.bindSymbol(cast(void**)&ImGuiTableTempData_ImGuiTableTempData, "ImGuiTableTempData_ImGuiTableTempData");
     lib.bindSymbol(cast(void**)&ImRect_GetCenter, "ImRect_GetCenter");
-    lib.bindSymbol(cast(void**)&igGetWindowContentRegionWidth, "igGetWindowContentRegionWidth");
     lib.bindSymbol(cast(void**)&ImDrawList_PathArcTo, "ImDrawList_PathArcTo");
     lib.bindSymbol(cast(void**)&igIsAnyItemActive, "igIsAnyItemActive");
     lib.bindSymbol(cast(void**)&igPushTextWrapPos, "igPushTextWrapPos");
@@ -696,6 +651,7 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&igEndTooltip, "igEndTooltip");
     lib.bindSymbol(cast(void**)&igFindWindowSettings, "igFindWindowSettings");
     lib.bindSymbol(cast(void**)&igDebugRenderViewportThumbnail, "igDebugRenderViewportThumbnail");
+    lib.bindSymbol(cast(void**)&ImGuiDockNode_UpdateMergedFlags, "ImGuiDockNode_UpdateMergedFlags");
     lib.bindSymbol(cast(void**)&igKeepAliveID, "igKeepAliveID");
     lib.bindSymbol(cast(void**)&igGetColumnOffsetFromNorm, "igGetColumnOffsetFromNorm");
     lib.bindSymbol(cast(void**)&ImFont_IsLoaded, "ImFont_IsLoaded");
@@ -721,6 +677,7 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&igIsItemActive, "igIsItemActive");
     lib.bindSymbol(cast(void**)&ImGuiViewportP_GetMainRect, "ImGuiViewportP_GetMainRect");
     lib.bindSymbol(cast(void**)&igShowAboutWindow, "igShowAboutWindow");
+    lib.bindSymbol(cast(void**)&ImGuiInputTextState_GetSelectionStart, "ImGuiInputTextState_GetSelectionStart");
     lib.bindSymbol(cast(void**)&igPushFont, "igPushFont");
     lib.bindSymbol(cast(void**)&igImStrchrRange, "igImStrchrRange");
     lib.bindSymbol(cast(void**)&igSetNextItemWidth, "igSetNextItemWidth");
@@ -734,38 +691,39 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&igGcCompactTransientWindowBuffers, "igGcCompactTransientWindowBuffers");
     lib.bindSymbol(cast(void**)&igTableSortSpecsBuild, "igTableSortSpecsBuild");
     lib.bindSymbol(cast(void**)&igNavMoveRequestTryWrapping, "igNavMoveRequestTryWrapping");
-    lib.bindSymbol(cast(void**)&igGetCurrentWindow, "igGetCurrentWindow");
+    lib.bindSymbol(cast(void**)&ImGuiInputTextState_GetSelectionEnd, "ImGuiInputTextState_GetSelectionEnd");
     lib.bindSymbol(cast(void**)&igIsWindowDocked, "igIsWindowDocked");
     lib.bindSymbol(cast(void**)&ImVec2_destroy, "ImVec2_destroy");
     lib.bindSymbol(cast(void**)&igTableBeginRow, "igTableBeginRow");
+    lib.bindSymbol(cast(void**)&igGetCurrentWindow, "igGetCurrentWindow");
+    lib.bindSymbol(cast(void**)&igSetDragDropPayload, "igSetDragDropPayload");
     lib.bindSymbol(cast(void**)&igGetID_Str, "igGetID_Str");
     lib.bindSymbol(cast(void**)&igGetID_StrStr, "igGetID_StrStr");
     lib.bindSymbol(cast(void**)&igGetID_Ptr, "igGetID_Ptr");
-    lib.bindSymbol(cast(void**)&igSetDragDropPayload, "igSetDragDropPayload");
-    lib.bindSymbol(cast(void**)&igImFontAtlasBuildMultiplyCalcLookupTable, "igImFontAtlasBuildMultiplyCalcLookupTable");
     lib.bindSymbol(cast(void**)&ImFontAtlas_ImFontAtlas, "ImFontAtlas_ImFontAtlas");
-    lib.bindSymbol(cast(void**)&ImGuiMenuColumns_CalcExtraSpace, "ImGuiMenuColumns_CalcExtraSpace");
-    lib.bindSymbol(cast(void**)&igGetContentRegionMax, "igGetContentRegionMax");
     lib.bindSymbol(cast(void**)&igBeginGroup, "igBeginGroup");
+    lib.bindSymbol(cast(void**)&igGetContentRegionMax, "igGetContentRegionMax");
+    lib.bindSymbol(cast(void**)&igEndChildFrame, "igEndChildFrame");
     lib.bindSymbol(cast(void**)&igActivateItem, "igActivateItem");
-    lib.bindSymbol(cast(void**)&igPopStyleVar, "igPopStyleVar");
+    lib.bindSymbol(cast(void**)&igImFontAtlasBuildMultiplyCalcLookupTable, "igImFontAtlasBuildMultiplyCalcLookupTable");
     lib.bindSymbol(cast(void**)&ImDrawList_PushClipRectFullScreen, "ImDrawList_PushClipRectFullScreen");
     lib.bindSymbol(cast(void**)&ImRect_Contains_Vec2, "ImRect_Contains_Vec2");
     lib.bindSymbol(cast(void**)&ImRect_Contains_Rect, "ImRect_Contains_Rect");
-    lib.bindSymbol(cast(void**)&igEndChildFrame, "igEndChildFrame");
+    lib.bindSymbol(cast(void**)&igGetBackgroundDrawList_Nil, "igGetBackgroundDrawList_Nil");
+    lib.bindSymbol(cast(void**)&igGetBackgroundDrawList_ViewportPtr, "igGetBackgroundDrawList_ViewportPtr");
     lib.bindSymbol(cast(void**)&igSetColumnOffset, "igSetColumnOffset");
     lib.bindSymbol(cast(void**)&igSetKeyboardFocusHere, "igSetKeyboardFocusHere");
     lib.bindSymbol(cast(void**)&igLoadIniSettingsFromMemory, "igLoadIniSettingsFromMemory");
-    lib.bindSymbol(cast(void**)&igGetBackgroundDrawList_Nil, "igGetBackgroundDrawList_Nil");
-    lib.bindSymbol(cast(void**)&igGetBackgroundDrawList_ViewportPtr, "igGetBackgroundDrawList_ViewportPtr");
+    lib.bindSymbol(cast(void**)&igIndent, "igIndent");
+    lib.bindSymbol(cast(void**)&igPopStyleVar, "igPopStyleVar");
     lib.bindSymbol(cast(void**)&igGetViewportPlatformMonitor, "igGetViewportPlatformMonitor");
     lib.bindSymbol(cast(void**)&igSetNextWindowSize, "igSetNextWindowSize");
     lib.bindSymbol(cast(void**)&igInputFloat3, "igInputFloat3");
-    lib.bindSymbol(cast(void**)&igIndent, "igIndent");
+    lib.bindSymbol(cast(void**)&igIsKeyDown, "igIsKeyDown");
     lib.bindSymbol(cast(void**)&igTableBeginApplyRequests, "igTableBeginApplyRequests");
     lib.bindSymbol(cast(void**)&igDockNodeBeginAmendTabBar, "igDockNodeBeginAmendTabBar");
+    lib.bindSymbol(cast(void**)&igBeginMenuEx, "igBeginMenuEx");
     lib.bindSymbol(cast(void**)&igTextUnformatted, "igTextUnformatted");
-    lib.bindSymbol(cast(void**)&igIsKeyDown, "igIsKeyDown");
     lib.bindSymbol(cast(void**)&igTextV, "igTextV");
     lib.bindSymbol(cast(void**)&igImLengthSqr_Vec2, "igImLengthSqr_Vec2");
     lib.bindSymbol(cast(void**)&igImLengthSqr_Vec4, "igImLengthSqr_Vec4");
@@ -814,7 +772,6 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&igTreeNode_Str, "igTreeNode_Str");
     lib.bindSymbol(cast(void**)&igTreeNode_StrStr, "igTreeNode_StrStr");
     lib.bindSymbol(cast(void**)&igTreeNode_Ptr, "igTreeNode_Ptr");
-    lib.bindSymbol(cast(void**)&ImGuiFreeType_SetAllocatorFunctions, "ImGuiFreeType_SetAllocatorFunctions");
     lib.bindSymbol(cast(void**)&igPopClipRect, "igPopClipRect");
     lib.bindSymbol(cast(void**)&ImDrawList_PushClipRect, "ImDrawList_PushClipRect");
     lib.bindSymbol(cast(void**)&igImBitArrayClearBit, "igImBitArrayClearBit");
@@ -824,6 +781,7 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&igTableSetColumnWidthAutoSingle, "igTableSetColumnWidthAutoSingle");
     lib.bindSymbol(cast(void**)&igBeginTooltipEx, "igBeginTooltipEx");
     lib.bindSymbol(cast(void**)&igGetFocusID, "igGetFocusID");
+    lib.bindSymbol(cast(void**)&igEndComboPreview, "igEndComboPreview");
     lib.bindSymbol(cast(void**)&ImDrawData_DeIndexAllBuffers, "ImDrawData_DeIndexAllBuffers");
     lib.bindSymbol(cast(void**)&ImDrawCmd_ImDrawCmd, "ImDrawCmd_ImDrawCmd");
     lib.bindSymbol(cast(void**)&ImDrawData_ScaleClipRects, "ImDrawData_ScaleClipRects");
@@ -875,10 +833,10 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&igTextWrappedV, "igTextWrappedV");
     lib.bindSymbol(cast(void**)&igTableBeginCell, "igTableBeginCell");
     lib.bindSymbol(cast(void**)&igTableGetColumnNextSortDirection, "igTableGetColumnNextSortDirection");
-    lib.bindSymbol(cast(void**)&ImGuiLastItemDataBackup_destroy, "ImGuiLastItemDataBackup_destroy");
+    lib.bindSymbol(cast(void**)&igDebugCheckVersionAndDataLayout, "igDebugCheckVersionAndDataLayout");
     lib.bindSymbol(cast(void**)&ImGuiTextBuffer_appendf, "ImGuiTextBuffer_appendf");
     lib.bindSymbol(cast(void**)&ImFontAtlas_AddCustomRectFontGlyph, "ImFontAtlas_AddCustomRectFontGlyph");
-    lib.bindSymbol(cast(void**)&igDebugCheckVersionAndDataLayout, "igDebugCheckVersionAndDataLayout");
+    lib.bindSymbol(cast(void**)&igInputTextWithHint, "igInputTextWithHint");
     lib.bindSymbol(cast(void**)&igImAlphaBlendColors, "igImAlphaBlendColors");
     lib.bindSymbol(cast(void**)&ImGuiStorage_GetBoolRef, "ImGuiStorage_GetBoolRef");
     lib.bindSymbol(cast(void**)&igBeginPopupContextVoid, "igBeginPopupContextVoid");
@@ -888,15 +846,13 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&igBringWindowToFocusFront, "igBringWindowToFocusFront");
     lib.bindSymbol(cast(void**)&igSliderInt, "igSliderInt");
     lib.bindSymbol(cast(void**)&igUpdateMouseMovingWindowEndFrame, "igUpdateMouseMovingWindowEndFrame");
-    lib.bindSymbol(cast(void**)&igInputTextWithHint, "igInputTextWithHint");
+    lib.bindSymbol(cast(void**)&igSliderInt2, "igSliderInt2");
     lib.bindSymbol(cast(void**)&igGetContentRegionMaxAbs, "igGetContentRegionMaxAbs");
     lib.bindSymbol(cast(void**)&igIsMouseHoveringRect, "igIsMouseHoveringRect");
-    lib.bindSymbol(cast(void**)&ImGuiLastItemDataBackup_Backup, "ImGuiLastItemDataBackup_Backup");
     lib.bindSymbol(cast(void**)&igImTextStrFromUtf8, "igImTextStrFromUtf8");
     lib.bindSymbol(cast(void**)&igIsActiveIdUsingNavDir, "igIsActiveIdUsingNavDir");
     lib.bindSymbol(cast(void**)&ImGuiListClipper_Begin, "ImGuiListClipper_Begin");
     lib.bindSymbol(cast(void**)&igStartMouseMovingWindow, "igStartMouseMovingWindow");
-    lib.bindSymbol(cast(void**)&igSliderInt2, "igSliderInt2");
     lib.bindSymbol(cast(void**)&igIsItemHovered, "igIsItemHovered");
     lib.bindSymbol(cast(void**)&igTableEndRow, "igTableEndRow");
     lib.bindSymbol(cast(void**)&ImGuiIO_destroy, "ImGuiIO_destroy");
@@ -930,6 +886,7 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&igEnd, "igEnd");
     lib.bindSymbol(cast(void**)&igTabBarCloseTab, "igTabBarCloseTab");
     lib.bindSymbol(cast(void**)&igIsItemActivated, "igIsItemActivated");
+    lib.bindSymbol(cast(void**)&igBeginDisabled, "igBeginDisabled");
     lib.bindSymbol(cast(void**)&ImGuiInputTextState_ImGuiInputTextState, "ImGuiInputTextState_ImGuiInputTextState");
     lib.bindSymbol(cast(void**)&ImRect_GetHeight, "ImRect_GetHeight");
     lib.bindSymbol(cast(void**)&ImFontAtlas_AddFontDefault, "ImFontAtlas_AddFontDefault");
@@ -977,8 +934,8 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&ImDrawList_GetClipRectMax, "ImDrawList_GetClipRectMax");
     lib.bindSymbol(cast(void**)&igInputFloat2, "igInputFloat2");
     lib.bindSymbol(cast(void**)&ImDrawDataBuilder_ClearFreeMemory, "ImDrawDataBuilder_ClearFreeMemory");
+    lib.bindSymbol(cast(void**)&ImGuiLastItemData_destroy, "ImGuiLastItemData_destroy");
     lib.bindSymbol(cast(void**)&ImGuiWindowSettings_GetName, "ImGuiWindowSettings_GetName");
-    lib.bindSymbol(cast(void**)&ImGuiLastItemDataBackup_Restore, "ImGuiLastItemDataBackup_Restore");
     lib.bindSymbol(cast(void**)&igImStrdup, "igImStrdup");
     lib.bindSymbol(cast(void**)&igImFormatStringV, "igImFormatStringV");
     lib.bindSymbol(cast(void**)&igSetTooltipV, "igSetTooltipV");
@@ -995,7 +952,6 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&igBeginTooltip, "igBeginTooltip");
     lib.bindSymbol(cast(void**)&igOpenPopupOnItemClick, "igOpenPopupOnItemClick");
     lib.bindSymbol(cast(void**)&ImDrawListSplitter_Merge, "ImDrawListSplitter_Merge");
-    lib.bindSymbol(cast(void**)&ImGuiFreeType_GetBuilderForFreeType, "ImGuiFreeType_GetBuilderForFreeType");
     lib.bindSymbol(cast(void**)&ImGuiWindow_MenuBarHeight, "ImGuiWindow_MenuBarHeight");
     lib.bindSymbol(cast(void**)&ImColor_HSV, "ImColor_HSV");
     lib.bindSymbol(cast(void**)&igBeginTableEx, "igBeginTableEx");
@@ -1038,6 +994,7 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&ImGuiWindowClass_ImGuiWindowClass, "ImGuiWindowClass_ImGuiWindowClass");
     lib.bindSymbol(cast(void**)&igDockBuilderRemoveNodeChildNodes, "igDockBuilderRemoveNodeChildNodes");
     lib.bindSymbol(cast(void**)&igGetColumnsID, "igGetColumnsID");
+    lib.bindSymbol(cast(void**)&ImGuiDockNode_SetLocalFlags, "ImGuiDockNode_SetLocalFlags");
     lib.bindSymbol(cast(void**)&igPushAllowKeyboardFocus, "igPushAllowKeyboardFocus");
     lib.bindSymbol(cast(void**)&ImDrawList_PopTextureID, "ImDrawList_PopTextureID");
     lib.bindSymbol(cast(void**)&igColumns, "igColumns");
@@ -1122,7 +1079,6 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&ImFontAtlas_GetTexDataAsRGBA32, "ImFontAtlas_GetTexDataAsRGBA32");
     lib.bindSymbol(cast(void**)&ImGuiOnceUponAFrame_ImGuiOnceUponAFrame, "ImGuiOnceUponAFrame_ImGuiOnceUponAFrame");
     lib.bindSymbol(cast(void**)&ImDrawData_destroy, "ImDrawData_destroy");
-    lib.bindSymbol(cast(void**)&ImFont_SetFallbackChar, "ImFont_SetFallbackChar");
     lib.bindSymbol(cast(void**)&igSaveIniSettingsToMemory, "igSaveIniSettingsToMemory");
     lib.bindSymbol(cast(void**)&igTabBarRemoveTab, "igTabBarRemoveTab");
     lib.bindSymbol(cast(void**)&igGetWindowHeight, "igGetWindowHeight");
@@ -1130,6 +1086,7 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&ImGuiTextFilter_PassFilter, "ImGuiTextFilter_PassFilter");
     lib.bindSymbol(cast(void**)&ImFontAtlas_AddFontFromMemoryCompressedBase85TTF, "ImFontAtlas_AddFontFromMemoryCompressedBase85TTF");
     lib.bindSymbol(cast(void**)&ImFontAtlas_AddFontFromFileTTF, "ImFontAtlas_AddFontFromFileTTF");
+    lib.bindSymbol(cast(void**)&igEndDisabled, "igEndDisabled");
     lib.bindSymbol(cast(void**)&ImGuiViewportP_CalcWorkRectSize, "ImGuiViewportP_CalcWorkRectSize");
     lib.bindSymbol(cast(void**)&igGetCurrentContext, "igGetCurrentContext");
     lib.bindSymbol(cast(void**)&igColorConvertU32ToFloat4, "igColorConvertU32ToFloat4");
@@ -1149,6 +1106,7 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&igIsItemToggledOpen, "igIsItemToggledOpen");
     lib.bindSymbol(cast(void**)&igInputInt3, "igInputInt3");
     lib.bindSymbol(cast(void**)&igShrinkWidths, "igShrinkWidths");
+    lib.bindSymbol(cast(void**)&igClosePopupsExceptModals, "igClosePopupsExceptModals");
     lib.bindSymbol(cast(void**)&ImDrawList_AddText_Vec2, "ImDrawList_AddText_Vec2");
     lib.bindSymbol(cast(void**)&ImDrawList_AddText_FontPtr, "ImDrawList_AddText_FontPtr");
     lib.bindSymbol(cast(void**)&ImDrawList_PrimRectUV, "ImDrawList_PrimRectUV");
@@ -1159,8 +1117,8 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&ImGuiStorage_GetBool, "ImGuiStorage_GetBool");
     lib.bindSymbol(cast(void**)&igRenderFrameBorder, "igRenderFrameBorder");
     lib.bindSymbol(cast(void**)&igFindWindowByName, "igFindWindowByName");
+    lib.bindSymbol(cast(void**)&ImGuiLastItemData_ImGuiLastItemData, "ImGuiLastItemData_ImGuiLastItemData");
     lib.bindSymbol(cast(void**)&igImTextStrToUtf8, "igImTextStrToUtf8");
-    lib.bindSymbol(cast(void**)&igTextWrapped, "igTextWrapped");
     lib.bindSymbol(cast(void**)&igScrollToBringRectIntoView, "igScrollToBringRectIntoView");
     lib.bindSymbol(cast(void**)&igInputInt, "igInputInt");
     lib.bindSymbol(cast(void**)&ImVec2_ImVec2_Nil, "ImVec2_ImVec2_Nil");
@@ -1168,6 +1126,7 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&ImGuiTextBuffer_size, "ImGuiTextBuffer_size");
     lib.bindSymbol(cast(void**)&ImFontAtlas_GetGlyphRangesDefault, "ImFontAtlas_GetGlyphRangesDefault");
     lib.bindSymbol(cast(void**)&igUpdatePlatformWindows, "igUpdatePlatformWindows");
+    lib.bindSymbol(cast(void**)&igTextWrapped, "igTextWrapped");
     lib.bindSymbol(cast(void**)&ImFontAtlas_ClearTexData, "ImFontAtlas_ClearTexData");
     lib.bindSymbol(cast(void**)&ImFont_GetCharAdvance, "ImFont_GetCharAdvance");
     lib.bindSymbol(cast(void**)&igSliderFloat3, "igSliderFloat3");
@@ -1181,6 +1140,8 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&igSetWindowPos_WindowPtr, "igSetWindowPos_WindowPtr");
     lib.bindSymbol(cast(void**)&igTempInputText, "igTempInputText");
     lib.bindSymbol(cast(void**)&igSetScrollHereY, "igSetScrollHereY");
+    lib.bindSymbol(cast(void**)&igMenuItemEx, "igMenuItemEx");
+    lib.bindSymbol(cast(void**)&ImGuiIO_AddFocusEvent, "ImGuiIO_AddFocusEvent");
     lib.bindSymbol(cast(void**)&ImGuiViewport_ImGuiViewport, "ImGuiViewport_ImGuiViewport");
     lib.bindSymbol(cast(void**)&igProgressBar, "igProgressBar");
     lib.bindSymbol(cast(void**)&ImDrawList_CloneOutput, "ImDrawList_CloneOutput");
@@ -1253,6 +1214,7 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&igBeginCombo, "igBeginCombo");
     lib.bindSymbol(cast(void**)&ImRect_Expand_Float, "ImRect_Expand_Float");
     lib.bindSymbol(cast(void**)&ImRect_Expand_Vec2, "ImRect_Expand_Vec2");
+    lib.bindSymbol(cast(void**)&igNavMoveRequestApplyResult, "igNavMoveRequestApplyResult");
     lib.bindSymbol(cast(void**)&igOpenPopup_Str, "igOpenPopup_Str");
     lib.bindSymbol(cast(void**)&igOpenPopup_ID, "igOpenPopup_ID");
     lib.bindSymbol(cast(void**)&igImCharIsBlankW, "igImCharIsBlankW");
@@ -1268,6 +1230,7 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&igBeginTabBar, "igBeginTabBar");
     lib.bindSymbol(cast(void**)&igGetCursorPosY, "igGetCursorPosY");
     lib.bindSymbol(cast(void**)&igCalcTextSize, "igCalcTextSize");
+    lib.bindSymbol(cast(void**)&igSetActiveIdUsingNavAndKeys, "igSetActiveIdUsingNavAndKeys");
     lib.bindSymbol(cast(void**)&ImFont_CalcTextSizeA, "ImFont_CalcTextSizeA");
     lib.bindSymbol(cast(void**)&igImClamp, "igImClamp");
     lib.bindSymbol(cast(void**)&igGetColumnWidth, "igGetColumnWidth");
@@ -1275,6 +1238,7 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&igTabBarFindMostRecentlySelectedTabForActiveWindow, "igTabBarFindMostRecentlySelectedTabForActiveWindow");
     lib.bindSymbol(cast(void**)&ImGuiPayload_Clear, "ImGuiPayload_Clear");
     lib.bindSymbol(cast(void**)&ImGuiTextBuffer_reserve, "ImGuiTextBuffer_reserve");
+    lib.bindSymbol(cast(void**)&ImDrawList__TryMergeDrawCmds, "ImDrawList__TryMergeDrawCmds");
     lib.bindSymbol(cast(void**)&ImGuiInputTextState_CursorAnimReset, "ImGuiInputTextState_CursorAnimReset");
     lib.bindSymbol(cast(void**)&ImRect_ClipWithFull, "ImRect_ClipWithFull");
     lib.bindSymbol(cast(void**)&igGetFontTexUvWhitePixel, "igGetFontTexUvWhitePixel");
@@ -1320,7 +1284,9 @@ ImGuiSupport loadImGui(const(char)* libName)
         lib.bindSymbol(cast(void**)&ImGui_ImplGlfw_KeyCallback, "ImGui_ImplGlfw_KeyCallback");
         lib.bindSymbol(cast(void**)&ImGui_ImplGlfw_ScrollCallback, "ImGui_ImplGlfw_ScrollCallback");
         lib.bindSymbol(cast(void**)&ImGui_ImplGlfw_MouseButtonCallback, "ImGui_ImplGlfw_MouseButtonCallback");
+        lib.bindSymbol(cast(void**)&ImGui_ImplGlfw_WindowFocusCallback, "ImGui_ImplGlfw_WindowFocusCallback");
         lib.bindSymbol(cast(void**)&ImGui_ImplGlfw_Shutdown, "ImGui_ImplGlfw_Shutdown");
+        lib.bindSymbol(cast(void**)&ImGui_ImplGlfw_CursorEnterCallback, "ImGui_ImplGlfw_CursorEnterCallback");
     }
 
     version (USE_OpenGL3) {
@@ -1341,6 +1307,7 @@ ImGuiSupport loadImGui(const(char)* libName)
         lib.bindSymbol(cast(void**)&ImGui_ImplSDL2_InitForVulkan, "ImGui_ImplSDL2_InitForVulkan");
         lib.bindSymbol(cast(void**)&ImGui_ImplSDL2_InitForD3D, "ImGui_ImplSDL2_InitForD3D");
         lib.bindSymbol(cast(void**)&ImGui_ImplSDL2_ProcessEvent, "ImGui_ImplSDL2_ProcessEvent");
+        lib.bindSymbol(cast(void**)&ImGui_ImplSDL2_InitForSDLRenderer, "ImGui_ImplSDL2_InitForSDLRenderer");
         lib.bindSymbol(cast(void**)&ImGui_ImplSDL2_NewFrame, "ImGui_ImplSDL2_NewFrame");
     }
 

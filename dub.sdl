@@ -4,8 +4,9 @@ homepage ""
 authors "Joshua T. Fisher" "Luna Nielsen"
 license "Boost"
 
-copyFiles "libs/x86_64/cimgui.dll" platform="windows-x86_64"
-copyFiles "libs/x86_64/SDL2.dll" platform="windows-x86_64"
+copyFiles "libs/Windows/64bit/cimgui.dll" platform="windows-x86_64"
+copyFiles "libs/Windows/64bit/SDL2.dll" platform="windows-x86_64"
+copyFiles "libs/Windows/64bit/freetype.dll" platform="windows-x86_64"
 copyFiles "libs/arm64/cimgui.dylib" platform="osx-aarch64"
 //copyFiles "libs/x86_64/imgui.ini"
 

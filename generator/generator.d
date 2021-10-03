@@ -60,6 +60,8 @@ shared static this()
         "signed short*": "short*",
         "signed int*": "int*",
         "int64_t" : "long",
+        "signed __int64" : "long",
+        "unsigned __int64" : "ulong",
         "uint64_t" : "ulong",
         "union { int BackupInt[2]; float BackupFloat[2];}": "union { int[2] BackupInt; float[2] BackupFloat;}",
         "const char*" : "const(char)*",
@@ -94,7 +96,7 @@ shared static this()
         "ImGui_ImplGlfw" :BackendData(
             "ImGui_ImplGlfw", 
             "Glfw", 
-            "import bindbc.sdl;",
+            "import bindbc.glfw;",
             "USE_GLFW"
         ),
         "ImGui_ImplOpenGL2" :BackendData(
