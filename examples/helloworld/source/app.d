@@ -9,7 +9,7 @@ import bindbc.sdl,
        bindbc.imgui.bind.imgui,
        bindbc.opengl;
 
-import bindbc.imgui.ImGuiOpenGLBackend;
+import bindbc.imgui.ogl;
 
 void main()
 {
