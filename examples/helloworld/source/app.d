@@ -46,7 +46,7 @@ void main()
     ImGuiIO* io = igGetIO();
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;           // Enable Docking
+    io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;           // Enable Docking
     //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;         // Enable Multi-Viewport / Platform Windows
 
     // Setup Dear ImGui style
@@ -98,7 +98,7 @@ void main()
 
         // Start the Dear ImGui frame
         ImGuiOpenGLBackend.new_frame();
-        ImGui_ImplSDL2_NewFrame(window);
+        ImGui_ImplSDL2_NewFrame();
         igNewFrame();
 
         igDockSpaceOverViewport(null, cast(ImGuiDockNodeFlags)0, null);
@@ -112,13 +112,13 @@ void main()
             static float f = 0.0f;
             static int counter = 0;
 
-            igBegin("Hello, world!", null, cast(ImGuiWindowFlags)0);                          // Create a window called "Hello, world!" and append into it.
+            igBegin("Hello, world!", null, ImGuiWindowFlags.None);                          // Create a window called "Hello, world!" and append into it.
 
             igText("This is some useful text.");               // Display some text (you can use a format strings too)
             igCheckbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
             igCheckbox("Another Window", &show_another_window);
 
-            igSliderFloat("float", &f, 0.0f, 1.0f, null, 0);            // Edit 1 float using a slider from 0.0f to 1.0f
+            igSliderFloat("float", &f, 0.0f, 1.0f, null, ImGuiSliderFlags.None);            // Edit 1 float using a slider from 0.0f to 1.0f
             //igColorEdit3("clear color", cast(float*)&clear_color.x); // Edit 3 floats representing a color
 
             if (igButton("Button", ImVec2(0,0)))                            // Buttons return true when clicked (most widgets return true when edited/activated)
@@ -133,7 +133,7 @@ void main()
         // 3. Show another simple window.
         if (show_another_window)
         {
-            igBegin("Another Window", &show_another_window, 0);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
+            igBegin("Another Window", &show_another_window, ImGuiWindowFlags.None);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
             igText("Hello from another window!");
             if (igButton("Close Me", ImVec2(0,0)))
                 show_another_window = false;
