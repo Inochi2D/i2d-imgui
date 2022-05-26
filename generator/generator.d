@@ -50,12 +50,14 @@ shared static this()
         "unsigned_char": "char",
         "unsigned short": "ushort",
         "unsigned int": "uint",
+        "unsigned long long": "ulong",
         "unsigned char*": "char*",
         "unsigned short*": "ushort*",
         "unsigned int*": "uint*",
         "signed char": "byte",
         "signed short": "short",
         "signed int": "int",
+        "signed long long": "long",
         "signed char*": "byte*",
         "signed short*": "short*",
         "signed int*": "int*",
@@ -74,8 +76,18 @@ shared static this()
         "ImDrawListPtr" : "ImDrawList*",
         "ImGuiViewportPPtr" : "ImGuiViewportP*",
         "ImGuiViewportPtr" : "ImGuiViewport*",
-        "const_charPtr" : "const(char)*"
+        "const_charPtr" : "const(char)*",
+        "const ImWchar*" : "const(ImWchar)*",
+        "const ImVec4*" : "const(ImVec4)*",
+        "const ImFontGlyph*" : "const(ImFontGlyph)*",
+        "const ImGuiPayload*" : "const(ImGuiPayload)*",
+        "const ImGuiPlatformMonitor*" : "const(ImGuiPlatformMonitor)*",
+        "const ImGuiDataTypeInfo*" : "const(ImGuiDataTypeInfo)*",
+        "int(__cdecl*)(void const*,void const*)" : "int function(const(void*), const(void*))",
+        "ImBitArray<ImGuiKey_NamedKey_COUNT,-ImGuiKey_NamedKey_BEGIN>" : "ImBitArray!(ImGuiKey.NamedKey_COUNT,-ImGuiKey.NamedKey_BEGIN)"
     ];
+
+    //alias ImBitArrayForNamedKeys = ImBitArray(ImGuiKey.NamedKey_COUNT,-ImGuiKey.NamedKey_BEGIN); ImBitArray<ImGuiKey_NamedKey_COUNT,-ImGuiKey_NamedKey_BEGIN>;
 
     cDefaultArgumentsNeedingConversion = [
         "sizeof(float)" : "float.sizeof",
@@ -162,6 +174,8 @@ string imgui_type_to_dlang(string imguiType)
         imguiType = handle_dang_template("ImVector", imguiType);
     else if (startsWith(imguiType, "ImSpan_"))
         imguiType = handle_dang_template("ImSpan", imguiType);
+    else if (startsWith(imguiType, "ImBitArray_"))
+        imguiType = handle_dang_template("ImBitArray", imguiType);
     
     if (canFind(imguiType, "(*)"))
     {
@@ -348,55 +362,6 @@ private {
     ImGuiSupport loadedVersion;
 }
 
-alias pInitOpenGLForImGui = void function();
-
-__gshared {
-pInitOpenGLForImGui InitOpenGLForImGui;
-}
-
-bool loadImGuiSupport()
-{
-    // #1778 prevents me from using static arrays here :(
-    version(Windows) {
-        const(char)[][1] libNames = [
-            "imgui_gl_loader.dll",
-        ];
-    }
-    else version(OSX) {
-        const(char)[][1] libNames = [
-            "imgui_gl_loader.dylib"
-        ];
-    }
-    else version(Posix) {
-        const(char)[][1] libNames = [
-            "imgui_gl_loader.so"
-        ];
-    }
-    else static assert(0, "bindbc-ImGui is not yet supported on this platform.");
-
-    bool ret;
-    foreach(name; libNames) {
-        ret = loadImGuiSupport(name.ptr);
-        if(!ret) break;
-    }
-    return ret;
-}
-
-bool loadImGuiSupport(const(char)* libName)
-{
-    lib = load(libName);
-    if(lib == invalidHandle) {
-        return false;
-    }
-
-    auto errCount = errorCount();
-    loadedVersion = ImGuiSupport.badLibrary;
-
-    lib.bindSymbol(cast(void**)&InitOpenGLForImGui, "InitOpenGLForImGui");
-
-    return true;
-}
-
 void unloadImGui()
 {
     if(lib != invalidHandle) {
@@ -437,8 +402,6 @@ ImGuiSupport loadImGui()
         ret = loadImGui(name.ptr);
         if(ret != ImGuiSupport.noLibrary) break;
     }
-
-    loadImGuiSupport();
 
     return ret;
 }
@@ -540,6 +503,78 @@ struct ImSpan(tType) {
 }
 };
 
+
+//template<int BITCOUNT, int OFFSET = 0>
+//struct ImBitArray
+//{
+//    ImU32           Storage[(BITCOUNT + 31) >> 5];
+//    ImBitArray()                                { ClearAllBits(); }
+//    void            ClearAllBits()              { memset(Storage, 0, sizeof(Storage)); }
+//    void            SetAllBits()                { memset(Storage, 255, sizeof(Storage)); }
+//    bool            TestBit(int n) const        { n += OFFSET; IM_ASSERT(n >= 0 && n < BITCOUNT); return ImBitArrayTestBit(Storage, n); }
+//    void            SetBit(int n)               { n += OFFSET; IM_ASSERT(n >= 0 && n < BITCOUNT); ImBitArraySetBit(Storage, n); }
+//    void            ClearBit(int n)             { n += OFFSET; IM_ASSERT(n >= 0 && n < BITCOUNT); ImBitArrayClearBit(Storage, n); }
+//    void            SetBitRange(int n, int n2)  { n += OFFSET; n2 += OFFSET; IM_ASSERT(n >= 0 && n < BITCOUNT && n2 > n && n2 <= BITCOUNT); ImBitArraySetBitRange(Storage, n, n2); } // Works on range [n..n2)
+//    bool            operator[](int n) const     { n += OFFSET; IM_ASSERT(n >= 0 && n < BITCOUNT); return ImBitArrayTestBit(Storage, n); }
+//};
+
+const string imBitArray = q{
+struct ImBitArray(int BITCOUNT, int OFFSET = 0)
+{
+    ImU32[(BITCOUNT + 31) >> 5] Storage;
+    //ImBitArray()
+    //{ 
+    //    ClearAllBits(); 
+    //}
+
+    void ClearAllBits()
+    { 
+        core.stdc.string.memset(Storage.ptr, 0, Storage.sizeof);
+    }
+
+    void SetAllBits()
+    { 
+        core.stdc.string.memset(Storage.ptr, 255, Storage.sizeof);
+    }
+
+    bool TestBit(int n) const
+    { 
+        n += OFFSET; 
+        assert(n >= 0 && n < BITCOUNT); 
+        return igImBitArrayTestBit(Storage.ptr, n); 
+    }
+
+    void SetBit(int n)
+    { 
+        n += OFFSET;
+        assert(n >= 0 && n < BITCOUNT); 
+        igImBitArraySetBit(Storage.ptr, n); 
+    }
+
+    void ClearBit(int n)
+    { 
+        n += OFFSET;
+        assert(n >= 0 && n < BITCOUNT); 
+        igImBitArrayClearBit(Storage.ptr, n); 
+    }
+    
+    // Works on range [n..n2)
+    void SetBitRange(int n, int n2)
+    { 
+        n += OFFSET; 
+        n2 += OFFSET; 
+        assert(n >= 0 && n < BITCOUNT && n2 > n && n2 <= BITCOUNT); 
+        igImBitArraySetBitRange(Storage.ptr, n, n2); 
+    }
+
+    bool opIndex(int n) const
+    { 
+        n += OFFSET; 
+        assert(n >= 0 && n < BITCOUNT); 
+        return igImBitArrayTestBit(Storage.ptr, n); 
+    }
+}
+};
 
 const string imVector = q{
 struct ImVector(tType) {
@@ -646,7 +681,8 @@ struct ImVector(tType) {
     }
 
 
-    // NB: It is illegal to call push_back/push_front/insert with a reference pointing inside the ImVector data itself! e.g. v.push_back(v[10]) is forbidden.
+    // NB: It is illegal to call push_back/push_front/insert with a reference pointing inside the 
+    // ImVector data itself! e.g. v.push_back(v[10]) is forbidden.
     void push_back(const tType* v)               
     {
         if (Size == Capacity)
@@ -772,12 +808,14 @@ string[string] write_template_structs(code_writer codeWriter, JSONValue definiti
 
     codeWriter.put_lines(imVector);
     codeWriter.put_lines(imSpan);
+    codeWriter.put_lines(imBitArray);
 
     foreach (string templateName, string templatedOnType; imTemplateTypes)
     {
         string structTemplate;
         if (startsWith(templateName, "ImVector_") 
-            || startsWith(templateName, "ImSpan_"))
+            || startsWith(templateName, "ImSpan_")
+            || startsWith(templateName, "ImBitArray_"))
             continue; // We utlize a D template for these. (ImPool and ImChunkStream to follow).
         else if (startsWith(templateName, "ImPool_"))
             structTemplate = imPool;
@@ -850,6 +888,9 @@ void write_enums(code_writer codeWriter, JSONValue definitions)
 
             if (valueName.startsWith("_"))
                 valueName = valueName[1 .. valueName.length];
+
+            if (std.string.isNumeric(valueName))
+                valueName = "n" ~ valueName;
 
             gConvertedEnumValue[value["name"].str] = adjustedEnumTypeName ~ "." ~ valueName;
 
@@ -1325,6 +1366,8 @@ void write_imgui_file(
     codeWriter.put_lines("import core.stdc.stdio;");
     codeWriter.line_break();
     codeWriter.put_lines("import core.stdc.stdarg;");
+    codeWriter.line_break();
+    codeWriter.put_lines("import core.stdc.string;");
     codeWriter.line_break();
 
     codeWriter.add_normal_extern_c();
