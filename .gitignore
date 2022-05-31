@@ -22,6 +22,8 @@ build_arm64_cimguiStatic_StaticCRT/
 
 dub.selections.json
 
+*.exp
+
 #Avoid outputs being pushed
 bindbc-imgui
 bindbc-imgui.exe
