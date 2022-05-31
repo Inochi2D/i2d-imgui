@@ -3026,7 +3026,8 @@ alias ImGuiMemAllocFunc = void* function(size_t sz,void* user_data);
 
 
 }
-version (BindImGui_Static_DynamicCRT) {
+
+version (BindImGui_Static) {
     extern (C) @nogc nothrow {
         void ImDrawList_AddCircleFilled(ImDrawList* self, const ImVec2 center, float radius, ImU32 col, int num_segments = 0);
         ImGuiPlatformIO* ImGuiPlatformIO_ImGuiPlatformIO();

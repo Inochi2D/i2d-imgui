@@ -20,7 +20,7 @@ configuration "dynamicBC" {
 }
 
 configuration "static_dynamicCRT" {
-    versions "BindImGui_Static_DynamicCRT"
+    versions "BindImGui_Static_DynamicCRT" "BindImGui_Static"
     excludedSourceFiles "source/bindbc/imgui/binddynamic.d"
     dflags "-mscrtlib=msvcrt" platform="windows-ldc"
     dflags "-flto=full" platform="windows-ldc"
@@ -36,7 +36,7 @@ configuration "static_dynamicCRT" {
 }
 
 configuration "static_staticCRT" {
-    versions "BindImGui_Static_StaticCRT"
+    versions "BindImGui_Static_StaticCRT" "BindImGui_Static"
     excludedSourceFiles "source/bindbc/imgui/binddynamic.d"
     dflags "-mscrtlib=msvcrt" platform="windows-ldc"
     dflags "-flto=full" platform="windows-ldc"
