@@ -36,6 +36,10 @@ configuration "static_dynamicCRT" {
     
     // MacOS Arm64
     copyFiles "libs/arm64/cimgui.dylib" platform="osx-aarch64"
+
+    // Linux
+    lflags "-L$PACKAGE_DIR/libs/x86_64/linux/Static/"
+    libs "cimgui" "sdl2" "freetype" ":libstdc++.a" platform="linux-x86_64"
 }
 
 configuration "static_staticCRT" {
@@ -65,6 +69,10 @@ configuration "static_staticCRT" {
 
     // MacOS Arm64
     copyFiles "libs/arm64/cimgui.dylib" platform="osx-aarch64"
+
+    // Linux
+    lflags "-L$PACKAGE_DIR/libs/x86_64/linux/Static/"
+    libs "cimgui" "sdl2" "freetype" ":libstdc++.a" platform="linux-x86_64"
 }
 
 configuration "dynamic_dynamicCRT" {
@@ -95,6 +103,11 @@ configuration "dynamic_dynamicCRT" {
 
     // MacOS Arm64
     copyFiles "libs/arm64/cimgui.dylib" platform="osx-aarch64"
+
+    // Linux
+    lflags "-L$PACKAGE_DIR/libs/x86_64/linux/Dynamic/"
+    libs "cimgui" platform="linux-x86_64"
+    copyFiles "libs/x86_64/linux/Dynamic/cimgui.so" platform="linux-x86_64"
 }
 
 configuration "dynamic_staticCRT" {
@@ -125,4 +138,9 @@ configuration "dynamic_staticCRT" {
 
     // MacOS Arm64
     copyFiles "libs/arm64/cimgui.dylib" platform="osx-aarch64"
+
+    // Linux
+    lflags "-L$PACKAGE_DIR/libs/x86_64/linux/Dynamic/"
+    libs "cimgui" platform="linux-x86_64"
+    copyFiles "libs/x86_64/linux/Dynamic/cimgui.so" platform="linux-x86_64"
 }
