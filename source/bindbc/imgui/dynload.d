@@ -466,6 +466,7 @@ ImGuiSupport loadImGui(const(char)* libName)
     lib.bindSymbol(cast(void**)&igDebugStartItemPicker, "igDebugStartItemPicker");
     lib.bindSymbol(cast(void**)&ImGuiNextWindowData_destroy, "ImGuiNextWindowData_destroy");
     lib.bindSymbol(cast(void**)&ImGuiPayload_IsDelivery, "ImGuiPayload_IsDelivery");
+    lib.bindSymbol(cast(void**)&ImFontAtlas_GetGlyphRangesChineseFull, "ImFontAtlas_GetGlyphRangesChineseFull");
     lib.bindSymbol(cast(void**)&ImFontAtlas_GetGlyphRangesJapanese, "ImFontAtlas_GetGlyphRangesJapanese");
     lib.bindSymbol(cast(void**)&ImRect_Overlaps, "ImRect_Overlaps");
     lib.bindSymbol(cast(void**)&igCaptureMouseFromApp, "igCaptureMouseFromApp");
