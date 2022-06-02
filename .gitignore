@@ -1,21 +1,6 @@
 /.dub/
 lib/
-build/
-build_x64/
-build_x86/
-build_x64_cimguiDynamic_DynamicCRT/
-build_x64_cimguiDynamic_StaticCRT/
-build_x64_cimguiStatic_DynamicCRT/
-build_x64_cimguiStatic_StaticCRT/
-build_x86_cimguiDynamic_DynamicCRT/
-build_x86_cimguiDynamic_StaticCRT/
-build_x86_cimguiStatic_DynamicCRT/
-build_x86_cimguiStatic_StaticCRT/
-build_arm64_cimguiDynamic_DynamicCRT/
-build_arm64_cimguiDynamic_StaticCRT/
-build_arm64_cimguiStatic_DynamicCRT/
-build_arm64_cimguiStatic_StaticCRT/
-
+build*/
 
 .dub/
 .vscode/
