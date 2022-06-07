@@ -64,7 +64,7 @@ if (MSVC)
 endif()
 
 # Libraries are built for Mac/Windows, and consumed via the Package Manager for Linux
-if (NOT UNIX OR APPLE) # Windows and Mac
+if (NOT UNIX OR APPLE OR DEFINED USE_SUBMODULE_SOURCES_FT_SDL2) # Windows and Mac
     add_subdirectory(freetype)
     set_target_properties(freetype PROPERTIES DEBUG_POSTFIX "")
     set_target_properties(freetype PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${OutputDirectory})
