@@ -51,7 +51,7 @@ configuration "static_dynamicCRT" {
         "cmake --build deps/build_linux_x64_cimguiStatic --config Release" platform="linux-x86_64"
 
     sourceFiles "$PACKAGE_DIR/libs/x86_64/linux/Static/cimgui.a" platform="linux-x86_64"
-    libs "sdl2" "freetype" ":libstdc++.a" platform="linux-x86_64"
+    libs "sdl2" "freetype" ":libstdc++.so" platform="linux-x86_64"
 }
 
 configuration "static_staticCRT" {
@@ -96,7 +96,7 @@ configuration "static_staticCRT" {
         "cmake --build deps/build_linux_x64_cimguiStatic --config Release" platform="linux-x86_64"
 
     sourceFiles "$PACKAGE_DIR/libs/x86_64/linux/Static/cimgui.a" platform="linux-x86_64"
-    libs "sdl2" "freetype" ":libstdc++.a" platform="linux-x86_64"
+    libs "sdl2" "freetype" ":libstdc++.so" platform="linux-x86_64"
 }
 
 configuration "dynamic_dynamicCRT" {
