@@ -3,6 +3,17 @@ cmake_minimum_required(VERSION 3.16)
 project(bindbc_imgui)
 
 
+include(cmake/PullSubmodules.cmake)
+
+
+if (NOT UNIX OR APPLE OR DEFINED USE_SUBMODULE_SOURCES)
+    PullSubmodules(${CMAKE_CURRENT_LIST_DIR}/.. submodulePrefixPath)
+endif()
+
+message(STATUS "submodulePrefixPath: ${submodulePrefixPath}")
+
+#set(${CMAKE_CURRENT_LIST_DIR}/../${})
+
 ####################
 # Setup
 set(CMAKE_DEBUG_POSTFIX "")
@@ -21,9 +32,10 @@ endif()
 if(${CMAKE_GENERATOR} MATCHES "Visual Studio.*")
     add_compile_options(/MP)
 
-    if(${CMAKE_GENERATOR_PLATFORM} STREQUAL ARM64)
-        message("We set that bad boy we did")
-        set(PlatformArchitecture arm64)
+    if (CMAKE_GENERATOR_PLATFORM)
+        if(${CMAKE_GENERATOR_PLATFORM} STREQUAL ARM64)
+            set(PlatformArchitecture arm64)
+        endif()
     endif()
 endif() 
 
@@ -64,8 +76,8 @@ if (MSVC)
 endif()
 
 # Libraries are built for Mac/Windows, and consumed via the Package Manager for Linux
-if (NOT UNIX OR APPLE OR DEFINED USE_SUBMODULE_SOURCES_FT_SDL2) # Windows and Mac
-    add_subdirectory(freetype)
+if (NOT UNIX OR APPLE OR DEFINED USE_SUBMODULE_SOURCES) # Windows and Mac
+    add_subdirectory(${submodulePrefixPath}freetype)
     set_target_properties(freetype PROPERTIES DEBUG_POSTFIX "")
     set_target_properties(freetype PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${OutputDirectory})
     set_target_properties(freetype PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${OutputDirectory})
@@ -76,7 +88,7 @@ if (NOT UNIX OR APPLE OR DEFINED USE_SUBMODULE_SOURCES_FT_SDL2) # Windows and Ma
     set(IMGUI_FREETYPE "yes" CACHE STRING "Build with freetype library")
     set(IMGUI_FREETYPE_IN_TREE "yes" CACHE STRING "freetype library is being build in-tree")
 
-    add_subdirectory(SDL)
+    add_subdirectory(${submodulePrefixPath}SDL)
     set_target_properties(SDL2 PROPERTIES DEBUG_POSTFIX "")
     set_target_properties(SDL2 PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${OutputDirectory})
     set_target_properties(SDL2 PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${OutputDirectory})
@@ -98,7 +110,7 @@ endif()
 option(BUILD_SHARED_LIBS "Build shared instead of static libraries." OFF)
 set(IMGUI_SDL "yes" CACHE STRING "Build with SDL")
 set(IMGUI_OPENGL3 "yes" CACHE STRING "Build with OpenGL3")
-add_subdirectory(cimgui)
+add_subdirectory(${submodulePrefixPath}cimgui)
 
 set_target_properties(cimgui PROPERTIES DEBUG_POSTFIX "")
 set_target_properties(cimgui PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${OutputDirectory})
