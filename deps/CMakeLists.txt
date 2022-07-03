@@ -77,7 +77,7 @@ endif()
 
 # Libraries are built for Mac/Windows, and consumed via the Package Manager for Linux
 if (NOT UNIX OR APPLE OR DEFINED USE_SUBMODULE_SOURCES) # Windows and Mac
-    add_subdirectory(${submodulePrefixPath}freetype)
+    add_subdirectory(${freetype_SUBMOD_DIR})
     set_target_properties(freetype PROPERTIES DEBUG_POSTFIX "")
     set_target_properties(freetype PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${OutputDirectory})
     set_target_properties(freetype PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${OutputDirectory})
@@ -88,7 +88,7 @@ if (NOT UNIX OR APPLE OR DEFINED USE_SUBMODULE_SOURCES) # Windows and Mac
     set(IMGUI_FREETYPE "yes" CACHE STRING "Build with freetype library")
     set(IMGUI_FREETYPE_IN_TREE "yes" CACHE STRING "freetype library is being build in-tree")
 
-    add_subdirectory(${submodulePrefixPath}SDL)
+    add_subdirectory(${SDL_SUBMOD_DIR})
     set_target_properties(SDL2 PROPERTIES DEBUG_POSTFIX "")
     set_target_properties(SDL2 PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${OutputDirectory})
     set_target_properties(SDL2 PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${OutputDirectory})
@@ -110,7 +110,7 @@ endif()
 option(BUILD_SHARED_LIBS "Build shared instead of static libraries." OFF)
 set(IMGUI_SDL "yes" CACHE STRING "Build with SDL")
 set(IMGUI_OPENGL3 "yes" CACHE STRING "Build with OpenGL3")
-add_subdirectory(${submodulePrefixPath}cimgui)
+add_subdirectory(${cimgui_SUBMOD_DIR})
 
 set_target_properties(cimgui PROPERTIES DEBUG_POSTFIX "")
 set_target_properties(cimgui PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${OutputDirectory})

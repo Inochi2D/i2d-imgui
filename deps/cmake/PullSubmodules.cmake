@@ -1,6 +1,6 @@
 include(FetchContent)
 
-function(PullSubmodules aPath aOutputVar)
+function(PullSubmodules aPath)
     # Read in the git modules file and prepare it.
     file(READ ${aPath}/.gitmodules modulesFileString)
     string(REGEX REPLACE "\n" ";" modulesFileString "${modulesFileString}")
@@ -12,7 +12,11 @@ function(PullSubmodules aPath aOutputVar)
     string(LENGTH "\turl = " urlLineLengthConst)
     string(LENGTH "-0000000000000000000000000000000000000000 " commitHashLengthConst)
 
+    # We need to know what the last declared submodule is so that we can apply properties
+    # to it.
     set(currentSubmodule "")
+
+    # Parse the .gitmodules file.
     foreach(line ${modulesFileString})
         # Every parsing case needs this, so might as well set it.
         string(LENGTH ${line} lineLength)
@@ -62,10 +66,10 @@ function(PullSubmodules aPath aOutputVar)
     endforeach()
 
     # Walk each submodule and pull it down by FetchContent if it's not pulled.
-    # Right now it's assumed the submodules are all in one folder, and they're 
-    # either all there, or not. So this should be augmented in the future to 
-    # improve things.
     foreach(submodule ${submodules})
+        string(FIND ${submodule} "/" separatorPosition REVERSE)
+        string(SUBSTRING ${submodule} 0 ${separatorPosition} submoduleFolderName)
+
         if (NOT EXISTS ${aPath}/${submodule}/.git)
             message(STATUS ${${submodule}})
 
@@ -86,15 +90,11 @@ function(PullSubmodules aPath aOutputVar)
             )
             FetchContent_Populate(${submoduleNameAdjusted})
 
-            # Technically we should maybe do some big output map thing here, but for now
-            # we'll assume all submodules are in the same folder.
             if(NOT outputPath)
-                string(FIND ${submodule} "/" separatorPosition REVERSE)
-                string(SUBSTRING ${submodule} 0 ${separatorPosition} submoduleFolderName)
                 set(outputPath ${CMAKE_CURRENT_BINARY_DIR}/PulledSubmodules/${submoduleFolderName}/)
             endif()
+        else()
+            set(${submoduleFolderName}_SUBMOD_DIR ${aPath}/${submodule} PARENT_SCOPE)
         endif()
     endforeach()
-
-    set(${aOutputVar} ${outputPath} PARENT_SCOPE)
 endfunction()
