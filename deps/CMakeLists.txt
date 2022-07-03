@@ -2,17 +2,11 @@ cmake_minimum_required(VERSION 3.16)
 
 project(bindbc_imgui)
 
-
 include(cmake/PullSubmodules.cmake)
 
-
-if (NOT UNIX OR APPLE OR DEFINED USE_SUBMODULE_SOURCES)
-    PullSubmodules(${CMAKE_CURRENT_LIST_DIR}/.. submodulePrefixPath)
-endif()
+PullSubmodules(${CMAKE_CURRENT_LIST_DIR}/.. submodulePrefixPath)
 
 message(STATUS "submodulePrefixPath: ${submodulePrefixPath}")
-
-#set(${CMAKE_CURRENT_LIST_DIR}/../${})
 
 ####################
 # Setup
