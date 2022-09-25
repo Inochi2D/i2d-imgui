@@ -45,13 +45,21 @@ configuration "static_dynamicCRT" {
     copyFiles "libs/x86/win32/Static/DynamicCRT/SDL2.dll" platform="windows-x86"
     copyFiles "libs/x86/win32/Static/DynamicCRT/freetype.dll" platform="windows-x86"
     
-    // Linux
+    // Linux x86_64
     preBuildCommands \
         "cmake -DSTATIC_CIMGUI= -S deps -B deps/build_linux_x64_cimguiStatic" \
         "cmake --build deps/build_linux_x64_cimguiStatic --config Release" platform="linux-x86_64"
 
     sourceFiles "$PACKAGE_DIR/libs/x86_64/linux/Static/cimgui.a" platform="linux-x86_64"
     libs "sdl2" "freetype" ":libstdc++.so" platform="linux-x86_64"
+
+    // Linux aarch64
+    preBuildCommands \
+        "cmake -DSTATIC_CIMGUI= -S deps -B deps/build_linux_aarch64_cimguiStatic" \
+        "cmake --build deps/build_linux_aarch64_cimguiStatic --config Release" platform="linux-aarch64"
+
+    sourceFiles "$PACKAGE_DIR/libs/aarch64/linux/Static/cimgui.a" platform="linux-aarch64"
+    libs "sdl2" "freetype" ":libstdc++.so" platform="linux-aarch64"
 }
 
 configuration "static_staticCRT" {
@@ -90,13 +98,21 @@ configuration "static_staticCRT" {
     copyFiles "libs/x86/win32/Static/StaticCRT/SDL2.dll" platform="windows-x86"
     copyFiles "libs/x86/win32/Static/StaticCRT/freetype.dll" platform="windows-x86"
 
-    // Linux
+    // Linux x86_64
     preBuildCommands \
         "cmake -DSTATIC_CIMGUI= -S deps -B deps/build_linux_x64_cimguiStatic" \
         "cmake --build deps/build_linux_x64_cimguiStatic --config Release" platform="linux-x86_64"
 
     sourceFiles "$PACKAGE_DIR/libs/x86_64/linux/Static/cimgui.a" platform="linux-x86_64"
     libs "sdl2" "freetype" ":libstdc++.a" platform="linux-x86_64"
+
+    // Linux aarch64
+    preBuildCommands \
+        "cmake -DSTATIC_CIMGUI= -S deps -B deps/build_linux_aarch64_cimguiStatic" \
+        "cmake --build deps/build_linux_aarch64_cimguiStatic --config Release" platform="linux-aarch64"
+
+    sourceFiles "$PACKAGE_DIR/libs/aarch64/linux/Static/cimgui.a" platform="linux-aarch64"
+    libs "sdl2" "freetype" ":libstdc++.a" platform="linux-aarch64"
 }
 
 configuration "dynamic_dynamicCRT" {
@@ -141,12 +157,20 @@ configuration "dynamic_dynamicCRT" {
     copyFiles "libs/arm64/darwin/Dynamic/*.dylib" platform="darwin-aarch64"
     copyFiles "libs/x86_64/darwin/Dynamic/*.dylib" platform="darwin-x86_64"
 
-    // Linux
+    // Linux x86_64
     preBuildCommands \
         "cmake -S deps -B deps/build_linux_x64_cimguiDynamic" \
         "cmake --build deps/build_linux_x64_cimguiDynamic --config Release" platform="linux-x86_64"
 
     copyFiles "libs/x86_64/linux/Dynamic/cimgui.so" platform="linux-x86_64"
+
+    // Linux aarch64
+    preBuildCommands \
+        "cmake -S deps -B deps/build_linux_aarch64_cimguiDynamic" \
+        "cmake --build deps/build_linux_aarch64_cimguiDynamic --config Release" platform="linux-aarch64"
+
+    copyFiles "libs/aarch64/linux/Dynamic/cimgui.so" platform="linux-aarch64"
+
 }
 
 configuration "dynamic_staticCRT" {
@@ -193,10 +217,17 @@ configuration "dynamic_staticCRT" {
     copyFiles "libs/arm64/darwin/Dynamic/*.dylib" platform="osx-aarch64"
     copyFiles "libs/x86_64/darwin/Dynamic/*.dylib" platform="osx-x86_64"
 
-    // Linux
+    // Linux x86_64
     preBuildCommands \
         "cmake -S deps -B deps/build_linux_x64_cimguiDynamic" \
         "cmake --build deps/build_linux_x64_cimguiDynamic --config Release" platform="linux-x86_64"
         
     copyFiles "libs/x86_64/linux/Dynamic/cimgui.so" platform="linux-x86_64"
+
+    // Linux aarch64
+    preBuildCommands \
+        "cmake -S deps -B deps/build_linux_aarch64_cimguiDynamic" \
+        "cmake --build deps/build_linux_aarch64_cimguiDynamic --config Release" platform="linux-aarch64"
+
+    copyFiles "libs/aarch64/linux/Dynamic/cimgui.so" platform="linux-aarch64"
 }
