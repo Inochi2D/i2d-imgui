@@ -10,6 +10,7 @@ function(PullSubmodules aPath)
     string(LENGTH "[submodule \"\" " submoduleLineLengthConst)
     string(LENGTH "\tpath = " pathLineLengthConst)
     string(LENGTH "\turl = " urlLineLengthConst)
+    string(LENGTH "\tbranch = " branchLineLengthConst)
     string(LENGTH "-0000000000000000000000000000000000000000 " commitHashLengthConst)
 
     # We need to know what the last declared submodule is so that we can apply properties
@@ -25,6 +26,7 @@ function(PullSubmodules aPath)
         string(FIND ${line} "[submodule \"" submoduleCheck)
         string(FIND ${line} "\tpath = " pathCheck)
         string(FIND ${line} "\turl = " urlCheck)
+        string(FIND ${line} "\tbranch = " branchCheck)
 
         # Handle the submodule definition case
         if ("${submoduleCheck}" EQUAL 0)
@@ -47,6 +49,16 @@ function(PullSubmodules aPath)
             string(SUBSTRING ${line} 7 ${endOfSubmoduleName} url)
 
             set(${currentSubmodule}_URL ${url})
+        else()
+            message(FATAL_ERROR "If you see this, our git modules parser is broken! Please report it!")
+        endif()
+
+        # Handle the url definition case
+        elseif("${branchCheck}" EQUAL 0)
+            math(EXPR endOfSubmoduleName "${lineLength} - ${branchLineLengthConst}")
+            string(SUBSTRING ${line} 7 ${endOfSubmoduleName} branch)
+
+            set(${currentSubmodule}_BRANCH ${branch})
         else()
             message(FATAL_ERROR "If you see this, our git modules parser is broken! Please report it!")
         endif()
@@ -79,6 +91,16 @@ function(PullSubmodules aPath)
             message(STATUS "submodule: ${submodule}")
             message(STATUS "\tpath: ${${submodule}_PATH}")
             message(STATUS "\turl: ${${submodule}_URL}")
+            message(STATUS "\tbranch: ${${submodule}_BRANCH}")
+            message(STATUS "\tcommitHash: ${${submodule}_COMMIT_HASH}")
+
+            set(TagToPull ${${submodule}_COMMIT_HASH})
+
+            if (${${submodule}_BRANCH} STREQUAL "")
+                set(TagToPull ${${submodule}_BRANCH})
+            endif()
+
+            
             message(STATUS "\tcommitHash: ${${submodule}_COMMIT_HASH}")
             
             string(REGEX REPLACE "/" "_" submoduleNameAdjusted "${submodule}")
@@ -86,7 +108,7 @@ function(PullSubmodules aPath)
 
             FetchContent_Declare(${submoduleNameAdjusted}
                 GIT_REPOSITORY ${${submodule}_URL}
-                GIT_TAG        ${${submodule}_COMMIT_HASH}
+                GIT_TAG        ${TagToPull}
                 GIT_PROGRESS   TRUE
                 SOURCE_DIR     ${CMAKE_CURRENT_BINARY_DIR}/PulledSubmodules/${submodule}
 
