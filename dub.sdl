@@ -1,4 +1,4 @@
-name "bindbc-imgui"
+name "i2d-imgui"
 description "Dynamic and static bindings to imgui, compatible with -betterC, @nogc, and nothrow."
 homepage ""
 authors "Joshua T. Fisher" "Luna Nielsen"
