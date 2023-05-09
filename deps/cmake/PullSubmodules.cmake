@@ -49,14 +49,11 @@ function(PullSubmodules aPath)
             string(SUBSTRING ${line} 7 ${endOfSubmoduleName} url)
 
             set(${currentSubmodule}_URL ${url})
-        else()
-            message(FATAL_ERROR "If you see this, our git modules parser is broken! Please report it!")
-        endif()
 
         # Handle the url definition case
         elseif("${branchCheck}" EQUAL 0)
             math(EXPR endOfSubmoduleName "${lineLength} - ${branchLineLengthConst}")
-            string(SUBSTRING ${line} 7 ${endOfSubmoduleName} branch)
+            string(SUBSTRING ${line} 10 ${endOfSubmoduleName} branch)
 
             set(${currentSubmodule}_BRANCH ${branch})
         else()
@@ -96,12 +93,12 @@ function(PullSubmodules aPath)
 
             set(TagToPull ${${submodule}_COMMIT_HASH})
 
-            if (${${submodule}_BRANCH} STREQUAL "")
+            if (NOT ${${submodule}_BRANCH} STREQUAL "")
                 set(TagToPull ${${submodule}_BRANCH})
             endif()
 
             
-            message(STATUS "\tcommitHash: ${${submodule}_COMMIT_HASH}")
+            message(STATUS "\tTagToPull: ${TagToPull}")
             
             string(REGEX REPLACE "/" "_" submoduleNameAdjusted "${submodule}")
             string(REGEX REPLACE "/" "_" submoduleNameAdjusted "${submodule}")
