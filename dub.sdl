@@ -16,9 +16,6 @@ configuration "static_dynamicCRT" {
     // dflags "-flto=full" platform="windows-ldc"
     // dflags "-defaultlib=phobos2-ldc-lto,druntime-ldc-lto" platform="windows-ldc"
 
-    // For some reason this fixes compilation on Linux
-    dflags "--fvisibility=public" platform="linux-ldc"
-
     // Windows x86_64
     preBuildCommands \
         "cmake -G \"Visual Studio 17 2022\" -Ax64 -DSTATIC_CIMGUI= -S deps -B deps/build_windows_x64_cimguiStatic_DynamicCRT" \
@@ -68,9 +65,6 @@ configuration "static_staticCRT" {
     dflags "-mscrtlib=msvcrt" platform="windows-ldc"
     // dflags "-flto=full" platform="windows-ldc"
     // dflags "-defaultlib=phobos2-ldc-lto,druntime-ldc-lto" platform="windows-ldc"
-
-    // For some reason this fixes compilation on Linux
-    dflags "--fvisibility=public" platform="linux-ldc"
 
     // Windows x86_64
     preBuildCommands \
