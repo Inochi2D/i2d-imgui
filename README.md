@@ -46,6 +46,7 @@ Dynamically linked cimgui, statically linked C/C++ runtime libraries.
 #### Dependencies
 - You will need [CMake](https://cmake.org/install/) installed to build this project.
   - You will additionally need to set it up for command line use, see `Tools->How to Install For Command Line Use` in the CMake GUI
+  - By default, it will be compiled into universal binaries, which requires x86_64 and arm64 libraries. If you want to use only arm64, you can remove `set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64")` in [deps/CMakeLists.txt](./deps/CMakeLists.txt).
 
 # Using backends
 To select backends use the `versions` directive in your dub package file
