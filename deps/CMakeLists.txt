@@ -32,6 +32,13 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
     set(PlatformFolder "darwin")
     set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64")
+
+    # This is neccesary to avoid macports/homebrew libraries to be seen
+    # these break universal builds.
+    set(CMAKE_IGNORE_PATH
+        /opt/local/lib
+        /opt/local/include
+        /opt/local/bin)
 elseif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     set(PlatformFolder "linux")
 elseif (${CMAKE_SYSTEM_NAME} MATCHES "Android")
