@@ -2,9 +2,6 @@
 	path = deps/SDL
 	url = https://github.com/libsdl-org/SDL.git
 	branch = SDL2
-[submodule "deps/glbinding"]
-	path = deps/glbinding
-	url = https://github.com/cginternals/glbinding.git
 [submodule "deps/cimgui"]
 	path = deps/cimgui
 	url = https://github.com/Inochi2D/cimgui.git
