@@ -683,6 +683,10 @@ struct ImVector(tType) {
         Capacity = new_capacity; 
     }
 
+    ref auto opIndex(size_t index)
+    {
+        return Data[index];
+    }
 
     // NB: It is illegal to call push_back/push_front/insert with a reference pointing inside the 
     // ImVector data itself! e.g. v.push_back(v[10]) is forbidden.
