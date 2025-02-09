@@ -859,10 +859,15 @@ void write_typedefs(code_writer codeWriter, JSONValue typedefs, JSONValue struct
 
 void write_enums(code_writer codeWriter, JSONValue definitions)
 {
+    auto enum_comments = definitions["enum_comments"];
     auto enums = definitions["enums"];
 
     foreach (string enumName, JSONValue enumValues; enums) 
     {
+        if (enumName in enum_comments) {
+            codeWriter.put_lines(enum_comments[enumName]["above"].str().replace("// ", "/// "));
+        }
+
         string enumBaseType = "";
         string adjustedEnumTypeName = enumName;
 
@@ -913,9 +918,14 @@ void write_enums(code_writer codeWriter, JSONValue definitions)
 
 void write_structs(code_writer codeWriter, JSONValue definitions)
 {
+    auto struct_comments = definitions["struct_comments"];
     auto structs = definitions["structs"];
     foreach (string structName, JSONValue structMembers; structs) 
     {
+        if (structName in struct_comments) {
+            codeWriter.put_lines(struct_comments[structName]["above"].str().replace("// ", "/// "));
+        }
+
         codeWriter.add_struct(structName);
 
         foreach (JSONValue value; structMembers.array)

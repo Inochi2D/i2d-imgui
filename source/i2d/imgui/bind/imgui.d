@@ -375,6 +375,15 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImPoolIdx FreeIdx;
     }
 
+    /// Enum for ImGui::TableSetBgColor()
+    /// Background colors are rendering in 3 layers:
+    ///  - Layer 0: draw with RowBg0 color if set, otherwise draw with ColumnBg0 if set.
+    ///  - Layer 1: draw with RowBg1 color if set, otherwise draw with ColumnBg1 if set.
+    ///  - Layer 2: draw with CellBg color if set.
+    /// The purpose of the two row/columns layers is to let you decide if a background color change should override or blend with the existing color.
+    /// When using ImGuiTableFlags_RowBg on the table, each row has the RowBg0 color automatically set for odd/even rows.
+    /// If you set the color of RowBg0 target, your color will override the existing RowBg0 color.
+    /// If you set the color of RowBg1 or ColumnBg1 target, your color will blend over the RowBg0 color.
     enum ImGuiTableBgTarget {
         None = 0,
         RowBg0 = 1, /// Set row background color 0 (generally used for background, automatically set when ImGuiTableFlags_RowBg is used)
@@ -382,6 +391,8 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         CellBg = 3, /// Set cell background color (top-most color)
     }
 
+    /// FIXME: this is in development, not exposed/functional as a generic feature yet.
+    /// Horizontal/Vertical enums are fixed to 0/1 so they may be used to index ImVec2
     enum ImGuiLayoutType {
         Horizontal = 0,
         Vertical = 1,
@@ -394,6 +405,10 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         SpanAllColumns = 4, /// Make separator cover all columns of a legacy Columns() set.
     }
 
+    /// List of colors that are stored at the time of Begin() into Docked Windows.
+    /// We currently store the packed colors in a simple array window->DockStyle.Colors[].
+    /// A better solution may involve appending into a log of colors in ImGuiContext + store offsets into those arrays in ImGuiWindow,
+    /// but it would be more complex as we'd need to double-buffer both as e.g. drop target may refer to window from last frame.
     enum ImGuiWindowDockStyleCol {
         Text = 0,
         TabHovered = 1,
@@ -420,12 +435,17 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         HasStorageID = 16,
     }
 
+    /// Flags for FocusWindow(). This is not called ImGuiFocusFlags to avoid confusion with public-facing ImGuiFocusedFlags.
+    /// FIXME: Once we finishing replacing more uses of GetTopMostPopupModal()+IsWindowWithinBeginStackOf()
+    /// and FindBlockingModal() with this, we may want to change the flag to be opt-out instead of opt-in.
     enum ImGuiFocusRequestFlags {
         None = 0,
         RestoreFocusedChild = 1, /// Find last focused child (if any) and focus it instead.
         UnlessBelowModal = 2, /// Do not set focus if the window is below a modal.
     }
 
+    /// Status flags for an already submitted item
+    /// - output: stored in g.LastItemData.StatusFlags
     enum ImGuiItemStatusFlags {
         None = 0,
         HoveredRect = 1, /// Mouse position is within item rectangle (does NOT mean that the window is in correct z-order and can be hovered!, this is only one part of the most-common IsItemHovered test)
@@ -441,17 +461,21 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         HasShortcut = 1024, /// g.LastItemData.Shortcut valid. Set by SetNextItemShortcut() -> ItemAdd().
     }
 
+    /// Extend ImGuiHoveredFlags_
     enum ImGuiHoveredFlagsI : ImGuiHoveredFlags {
         DelayMask_ = cast(ImGuiHoveredFlags)245760,
         AllowedMaskForIsWindowHovered = cast(ImGuiHoveredFlags)12479,
         AllowedMaskForIsItemHovered = cast(ImGuiHoveredFlags)262048,
     }
 
+    /// Extend ImGuiSliderFlags_
     enum ImGuiSliderFlagsI : ImGuiSliderFlags {
         Vertical = cast(ImGuiSliderFlags)1048576, /// Should this slider be orientated vertically?
         ReadOnly = cast(ImGuiSliderFlags)2097152, /// Consider using g.NextItemData.ItemFlags |= ImGuiItemFlags_ReadOnly instead.
     }
 
+    /// Identify a mouse button.
+    /// Those values are guaranteed to be stable and we frequently use 0/1 directly. Named enums provided for convenience.
     enum ImGuiMouseButton {
         Left = 0,
         Right = 1,
@@ -459,6 +483,10 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         COUNT = 5,
     }
 
+    /// Enumeration for AddMouseSourceEvent() actual source of Mouse Input data.
+    /// Historically we use "Mouse" terminology everywhere to indicate pointer data, e.g. MousePos, IsMousePressed(), io.AddMousePosEvent()
+    /// But that "Mouse" data can come from different source which occasionally may be useful for application to know about.
+    /// You can submit a change of pointer type using io.AddMouseSourceEvent().
     enum ImGuiMouseSource {
         Mouse = 0, /// Input is coming from an actual mouse.
         TouchScreen = 1, /// Input is coming from a touch screen (no hovering prior to initial press, less precise initial press aiming, dual-axis wheeling possible).
@@ -466,12 +494,14 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         COUNT = 3,
     }
 
+    /// Flags for GetTypingSelectRequest()
     enum ImGuiTypingSelectFlags {
         None = 0,
         AllowBackspace = 1, /// Backspace to delete character inputs. If using: ensure GetTypingSelectRequest() is not called more than once per frame (filter by e.g. focus state)
         AllowSingleCharMode = 2, /// Allow "single char" search mode which is activated when pressing the same character multiple times.
     }
 
+    /// Extend ImGuiDockNodeFlags_
     enum ImGuiDockNodeFlagsI : ImGuiDockNodeFlags {
         DockSpace = cast(ImGuiDockNodeFlags)1024, /// Saved /// A dockspace is a node that occupy space within an existing user window. Otherwise the node is floating and create its own window.
         CentralNode = cast(ImGuiDockNodeFlags)2048, /// Saved /// The central node has 2 main properties: stay visible when empty, only use "remaining" spaces from its neighbor.
@@ -493,6 +523,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         SavedFlagsMask_ = cast(ImGuiDockNodeFlags)261152,
     }
 
+    /// Store the source authority (dock node vs window) of a field
     enum ImGuiDataAuthority {
         Auto = 0,
         DockNode = 1,
@@ -511,6 +542,9 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         COUNT = 8,
     }
 
+    /// Extend ImGuiInputFlags_
+    /// Flags for extended versions of IsKeyPressed(), IsMouseClicked(), Shortcut(), SetKeyOwner(), SetItemKeyOwner()
+    /// Don't mistake with ImGuiInputTextFlags! (which is for ImGui::InputText() function)
     enum ImGuiInputFlagsI : ImGuiInputFlags {
         RepeatRateDefault = cast(ImGuiInputFlags)2, /// Repeat rate: Regular (default)
         RepeatRateNavMove = cast(ImGuiInputFlags)4, /// Repeat rate: Fast
@@ -538,12 +572,14 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         SupportedBySetItemKeyOwner = cast(ImGuiInputFlags)15728640,
     }
 
+    /// Extend ImGuiTabBarFlags_
     enum ImGuiTabBarFlagsI : ImGuiTabBarFlags {
         DockNode = cast(ImGuiTabBarFlags)1048576, /// Part of a dock node [we don't use this in the master branch but it facilitate branch syncing to keep this around]
         IsFocused = cast(ImGuiTabBarFlags)2097152,
         SaveSettings = cast(ImGuiTabBarFlags)4194304, /// FIXME: Settings are handled by the docking system, this only request the tab bar to mark settings dirty when reordering tabs
     }
 
+    /// Flags for ImGui::TableSetupColumn()
     enum ImGuiTableColumnFlags {
         None = 0,
         Disabled = 1, /// Overriding/master disable flag: hide column, won't show in context menu (unlike calling TableSetColumnEnabled() which manipulates the user accessible state)
@@ -580,6 +616,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         OverridePrevious = 2, /// Clear/ignore previously submitted tooltip (defaults to append)
     }
 
+    /// Flags for ImGui::BeginTabItem()
     enum ImGuiTabItemFlags {
         None = 0,
         UnsavedDocument = 1, /// Display a dot next to the title + set ImGuiTabItemFlags_NoAssumedClosure.
@@ -593,6 +630,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         NoAssumedClosure = 256, /// Tab is selected when trying to close + closure is not immediately assumed (will wait for user to stop submitting the tab). Otherwise closure is assumed when pressing the X, so if you keep submitting the tab may reappear at end of tab bar.
     }
 
+    /// This is experimental and not officially supported, it'll probably fall short of features, if/when it does we may backtrack.
     enum ImGuiLocKey {
         VersionStr = 0,
         TableSizeOne = 1,
@@ -616,6 +654,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         Tooltip = 2,
     }
 
+    /// Configuration flags stored in io.ConfigFlags. Set by user/application.
     enum ImGuiConfigFlags {
         None = 0,
         NavEnableKeyboard = 1, /// Master keyboard navigation enable flag. Enable full Tabbing + directional arrows + space/enter to activate.
@@ -631,6 +670,15 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         IsTouchScreen = 2097152, /// Application is using a touch screen instead of a mouse.
     }
 
+    /// Flags for ImGui::BeginChild()
+    /// (Legacy: bit 0 must always correspond to ImGuiChildFlags_Borders to be backward compatible with old API using 'bool border = false'.
+    /// About using AutoResizeX/AutoResizeY flags:
+    /// - May be combined with SetNextWindowSizeConstraints() to set a min/max size for each axis (see "Demo->Child->Auto-resize with Constraints").
+    /// - Size measurement for a given axis is only performed when the child window is within visible boundaries, or is just appearing.
+    ///   - This allows BeginChild() to return false when not within boundaries (e.g. when scrolling), which is more optimal. BUT it won't update its auto-size while clipped.
+    ///     While not perfect, it is a better default behavior as the always-on performance gain is more valuable than the occasional "resizing after becoming visible again" glitch.
+    ///   - You may also use ImGuiChildFlags_AlwaysAutoResize to force an update even when child window is not in view.
+    ///     HOWEVER PLEASE UNDERSTAND THAT DOING SO WILL PREVENT BeginChild() FROM EVER RETURNING FALSE, disabling benefits of coarse clipping.
     enum ImGuiChildFlags {
         None = 0,
         Borders = 1, /// Show an outer border and enable WindowPadding. (IMPORTANT: this is always == 1 == true for legacy reason)
@@ -644,16 +692,19 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         NavFlattened = 256, /// [BETA] Share focus scope, allow keyboard/gamepad navigation to cross over parent border to this child or between sibling child windows.
     }
 
+    /// Flags for ImGui::TableNextRow()
     enum ImGuiTableRowFlags {
         None = 0,
         Headers = 1, /// Identify header row (set default background color + width of its contents accounted differently for auto column width)
     }
 
+    /// Extend ImGuiDataType_
     enum ImGuiDataTypeI : ImGuiDataType {
         Pointer = cast(ImGuiDataType)13,
         ID = cast(ImGuiDataType)14,
     }
 
+    /// Flags for ImGui::TreeNodeEx(), ImGui::CollapsingHeader*()
     enum ImGuiTreeNodeFlags {
         None = 0,
         Selected = 1, /// Draw as selected
@@ -676,6 +727,8 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         CollapsingHeader = 26,
     }
 
+    /// Flags for ImGui::Begin()
+    /// (Those are per-window flags. There are shared flags in ImGuiIO: io.ConfigWindowsResizeFromEdges and io.ConfigWindowsMoveFromTitleBarOnly)
     enum ImGuiWindowFlags {
         None = 0,
         NoTitleBar = 1, /// Disable title-bar
@@ -735,6 +788,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         NoWidthForLargeClippedText = 1,
     }
 
+    /// Flags for ColorEdit3() / ColorEdit4() / ColorPicker3() / ColorPicker4() / ColorButton()
     enum ImGuiColorEditFlags {
         None = 0,
         NoAlpha = 2, ///              /// ColorEdit, ColorPicker, ColorButton: ignore Alpha component (will only read 3 components from the input pointer).
@@ -780,6 +834,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         PendingRemoval_ = 7,
     }
 
+    /// Flags for ImGui::BeginTabBar()
     enum ImGuiTabBarFlags {
         None = 0,
         Reorderable = 1, /// Allow manually dragging tabs to re-order them + New tabs are appended at the end of list
@@ -795,6 +850,8 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         FittingPolicyDefault_ = 128,
     }
 
+    /// Flags for ImDrawList instance. Those are set automatically by ImGui:: functions from ImGuiIO settings, and generally not manipulated directly.
+    /// It is however possible to temporarily alter flags between calls to ImDrawList:: functions.
     enum ImDrawListFlags {
         None = 0,
         AntiAliasedLines = 1, /// Enable anti-aliased lines/borders (*2 the number of triangles for 1.0f wide line or lines thin enough to be drawn using textures, otherwise *3 the number of triangles)
@@ -803,6 +860,9 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         AllowVtxOffset = 8, /// Can emit 'VtxOffset > 0' to allow large meshes. Set when 'ImGuiBackendFlags_RendererHasVtxOffset' is enabled.
     }
 
+    /// Flags for Shortcut(), SetNextItemShortcut(),
+    /// (and for upcoming extended versions of IsKeyPressed(), IsMouseClicked(), Shortcut(), SetKeyOwner(), SetItemKeyOwner() that are still in imgui_internal.h)
+    /// Don't mistake with ImGuiInputTextFlags! (which is for ImGui::InputText() function)
     enum ImGuiInputFlags {
         None = 0,
         Repeat = 1, /// Enable repeat. Return true on successive repeats. Default for legacy IsKeyPressed(). NOT Default for legacy IsMouseClicked(). MUST BE == 1.
@@ -817,6 +877,12 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         Tooltip = 262144, /// Automatically display a tooltip when hovering item [BETA] Unsure of right api (opt-in/opt-out)
     }
 
+    /// A key identifier (ImGuiKey_XXX or ImGuiMod_XXX value): can represent Keyboard, Mouse and Gamepad values.
+    /// All our named keys are >= 512. Keys value 0 to 511 are left unused and were legacy native/opaque key values (< 1.87).
+    /// Support for legacy keys was completely removed in 1.91.5.
+    /// Read details about the 1.87+ transition : https://github.com/ocornut/imgui/issues/4921
+    /// Note that "Keys" related to physical keys and are not the same concept as input "Characters", the later are submitted via io.AddInputCharacter().
+    /// The keyboard key enum values are named after the keys on a standard US keyboard, and on other keyboard types the keys reported may not match the keycaps.
     enum ImGuiKey {
         None = 0,
         NamedKey_BEGIN = 512, /// First valid key value (other than 0)
@@ -984,6 +1050,9 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         NamedKey_COUNT = 154,
     }
 
+    /// Enumeration for ImGui::SetNextWindow***(), SetWindow***(), SetNextItem***() functions
+    /// Represent a condition.
+    /// Important: Treat as a regular enum! Do NOT combine multiple values using binary operators! All the functions above treat 0 as a shortcut to ImGuiCond_Always.
     enum ImGuiCond {
         None = 0, /// No condition (always set the variable), same as _Always
         Always = 1, /// No condition (always set the variable), same as _None
@@ -992,6 +1061,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         Appearing = 8, /// Set the variable if the object/window is appearing after being hidden/inactive (or the first time)
     }
 
+    /// Flags for ImGui::Selectable()
     enum ImGuiSelectableFlags {
         None = 0,
         NoAutoClosePopups = 1, /// Clicking this doesn't close parent popup window (overrides ImGuiItemFlags_AutoClosePopups)
@@ -1019,6 +1089,14 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         HasWindowClass = 4096,
     }
 
+    /// Enumeration for PushStyleVar() / PopStyleVar() to temporarily modify the ImGuiStyle structure.
+    /// - The enum only refers to fields of ImGuiStyle which makes sense to be pushed/popped inside UI code.
+    ///   During initialization or between frames, feel free to just poke into ImGuiStyle directly.
+    /// - Tip: Use your programming IDE navigation facilities on the names in the _second column_ below to find the actual members and their description.
+    ///   - In Visual Studio: CTRL+comma ("Edit.GoToAll") can follow symbols inside comments, whereas CTRL+F12 ("Edit.GoToImplementation") cannot.
+    ///   - In Visual Studio w/ Visual Assist installed: ALT+G ("VAssistX.GoToImplementation") can also follow symbols inside comments.
+    ///   - In VS Code, CLion, etc.: CTRL+click can follow symbols inside comments.
+    /// - When changing this enum, you need to update the associated internal table GStyleVarInfo[] accordingly. This is where we link enum values to members offset/type.
     enum ImGuiStyleVar {
         Alpha = 0, /// float     Alpha
         DisabledAlpha = 1, /// float     DisabledAlpha
@@ -1057,12 +1135,14 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         COUNT = 34,
     }
 
+    /// Extend ImGuiInputTextFlags_
     enum ImGuiInputTextFlagsI : ImGuiInputTextFlags {
         Multiline = cast(ImGuiInputTextFlags)67108864, /// For internal use by InputTextMultiline()
         MergedItem = cast(ImGuiInputTextFlags)134217728, /// For internal use by TempInputText(), will skip calling ItemAdd(). Require bounding-box to strictly match.
         LocalizeDecimalPoint = cast(ImGuiInputTextFlags)268435456, /// For internal use by InputScalar() and TempInputScalar()
     }
 
+    /// Flags for ImGui::BeginCombo()
     enum ImGuiComboFlags {
         None = 0,
         PopupAlignLeft = 1, /// Align the popup toward the left by default
@@ -1076,6 +1156,9 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         HeightMask_ = 30,
     }
 
+    /// Extend ImGuiItemFlags
+    /// - input: PushItemFlag() manipulates g.CurrentItemFlags, g.NextItemData.ItemFlags, ItemAdd() calls may add extra flags too.
+    /// - output: stored in g.LastItemData.ItemFlags
     enum ImGuiItemFlagsI : ImGuiItemFlags {
         Disabled = cast(ImGuiItemFlags)1024, /// false     /// Disable interactions (DOES NOT affect visuals. DO NOT mix direct use of this with BeginDisabled(). See BeginDisabled()/EndDisabled() for full disable feature, and github #211).
         ReadOnly = cast(ImGuiItemFlags)2048, /// false     /// [ALPHA] Allow hovering interactions but underlying value is not changed.
@@ -1090,6 +1173,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         Default_ = cast(ImGuiItemFlags)16, /// Please don't change, use PushItemFlag() instead.
     }
 
+    /// Flags for ImFontAtlas build
     enum ImFontAtlasFlags {
         None = 0,
         NoPowerOfTwoHeight = 1, /// Don't round the height to next power of two
@@ -1097,6 +1181,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         NoBakedLines = 4, /// Don't build thick line textures into the atlas (save a little texture memory, allow support for point/nearest filtering). The AntiAliasedLinesUseTex features uses them, otherwise they will be rendered using polygons (more expensive for CPU/GPU).
     }
 
+    /// Backend capabilities flags stored in io.BackendFlags. Set by imgui_impl_xxx or custom backend.
     enum ImGuiBackendFlags {
         None = 0,
         HasGamepad = 1, /// Backend Platform supports gamepad and currently has one connected.
@@ -1115,6 +1200,8 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         RefreshOnFocus = 4, /// [EXPERIMENTAL] Always refresh on focus
     }
 
+    /// Flags for ImGui::PushItemFlag()
+    /// (Those are shared by all items)
     enum ImGuiItemFlags {
         None = 0, /// (Default)
         NoTabStop = 1, /// false    /// Disable keyboard tabbing. This is a "lighter" version of ImGuiItemFlags_NoNav.
@@ -1125,6 +1212,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         AllowDuplicateId = 32, /// false    /// Allow submitting an item with the same identifier as an item already submitted this frame without triggering a warning tooltip if io.ConfigDebugHighlightIdConflicts is set.
     }
 
+    /// Flags for LogBegin() text capturing function
     enum ImGuiLogFlags {
         None = 0,
         OutputTTY = 1,
@@ -1147,12 +1235,14 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         HostWindowVisible = 3,
     }
 
+    /// X/Y enums are fixed to 0/1 so they may be used to index ImVec2
     enum ImGuiAxis {
         None = -1,
         X = 0,
         Y = 1,
     }
 
+    /// Extend ImGuiButtonFlags_
     enum ImGuiButtonFlagsI : ImGuiButtonFlags {
         PressedOnClick = cast(ImGuiButtonFlags)16, /// return true on click (mouse down event)
         PressedOnClickRelease = cast(ImGuiButtonFlags)32, /// [Default] return true on click + release on same item <-- this is what the majority of Button are using
@@ -1173,6 +1263,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         PressedOnDefault_ = cast(ImGuiButtonFlags)32,
     }
 
+    /// Flags for ImGui::BeginDragDropSource(), ImGui::AcceptDragDropPayload()
     enum ImGuiDragDropFlags {
         None = 0,
         SourceNoPreviewTooltip = 1, /// Disable preview tooltip. By default, a successful call to BeginDragDropSource opens a tooltip so you can display a preview or description of the source contents. This flag disables this behavior.
@@ -1189,12 +1280,14 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         AcceptPeekOnly = 3072, /// For peeking ahead and inspecting the payload before delivery.
     }
 
+    /// Selection request type
     enum ImGuiSelectionRequestType {
         None = 0,
         SetAll = 1, /// Request app to clear selection (if Selected==false) or select all items (if Selected==true). We cannot set RangeFirstItem/RangeLastItem as its contents is entirely up to user (not necessarily an index)
         SetRange = 2, /// Request app to select/unselect [RangeFirstItem..RangeLastItem] items (inclusive) based on value of Selected. Only EndMultiSelect() request this, app code can read after BeginMultiSelect() and it will always be false.
     }
 
+    /// See IMGUI_DEBUG_LOG() and IMGUI_DEBUG_LOG_XXX() macros.
     enum ImGuiDebugLogFlags {
         None = 0,
         EventError = 1, /// Error submitted by IM_ASSERT_USER_ERROR()
@@ -1214,12 +1307,35 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         OutputToTestEngine = 2097152, /// Also send output to Test Engine
     }
 
+    /// A sorting direction
     enum ImGuiSortDirection {
         None = 0,
         Ascending = 1, /// Ascending = 0->9, A->Z etc.
         Descending = 2, /// Descending = 9->0, Z->A etc.
     }
 
+    /// Flags for ImGui::BeginTable()
+    /// - Important! Sizing policies have complex and subtle side effects, much more so than you would expect.
+    ///   Read comments/demos carefully + experiment with live demos to get acquainted with them.
+    /// - The DEFAULT sizing policies are:
+    ///    - Default to ImGuiTableFlags_SizingFixedFit    if ScrollX is on, or if host window has ImGuiWindowFlags_AlwaysAutoResize.
+    ///    - Default to ImGuiTableFlags_SizingStretchSame if ScrollX is off.
+    /// - When ScrollX is off:
+    ///    - Table defaults to ImGuiTableFlags_SizingStretchSame -> all Columns defaults to ImGuiTableColumnFlags_WidthStretch with same weight.
+    ///    - Columns sizing policy allowed: Stretch (default), Fixed/Auto.
+    ///    - Fixed Columns (if any) will generally obtain their requested width (unless the table cannot fit them all).
+    ///    - Stretch Columns will share the remaining width according to their respective weight.
+    ///    - Mixed Fixed/Stretch columns is possible but has various side-effects on resizing behaviors.
+    ///      The typical use of mixing sizing policies is: any number of LEADING Fixed columns, followed by one or two TRAILING Stretch columns.
+    ///      (this is because the visible order of columns have subtle but necessary effects on how they react to manual resizing).
+    /// - When ScrollX is on:
+    ///    - Table defaults to ImGuiTableFlags_SizingFixedFit -> all Columns defaults to ImGuiTableColumnFlags_WidthFixed
+    ///    - Columns sizing policy allowed: Fixed/Auto mostly.
+    ///    - Fixed Columns can be enlarged as needed. Table will show a horizontal scrollbar if needed.
+    ///    - When using auto-resizing (non-resizable) fixed columns, querying the content width to use item right-alignment e.g. SetNextItemWidth(-FLT_MIN) doesn't make sense, would create a feedback loop.
+    ///    - Using Stretch columns OFTEN DOES NOT MAKE SENSE if ScrollX is on, UNLESS you have specified a value for 'inner_width' in BeginTable().
+    ///      If you specify a value for 'inner_width' then effectively the scrolling space is known and Stretch or mixed Fixed/Stretch columns become meaningful again.
+    /// - Read on documentation at the top of imgui_tables.cpp for details.
     enum ImGuiTableFlags {
         None = 0,
         Resizable = 1, /// Enable resizing columns.
@@ -1260,6 +1376,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         SizingMask_ = 57344,
     }
 
+    /// A cardinal direction
     enum ImGuiDir {
         None = -1,
         Left = 0,
@@ -1269,6 +1386,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         COUNT = 4,
     }
 
+    /// Early work-in-progress API for ScrollToItem()
     enum ImGuiScrollFlags {
         None = 0,
         KeepVisibleEdgeX = 1, /// If item is not visible: scroll as little as possible on X axis to bring item back into view [default for X axis]
@@ -1282,12 +1400,15 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         MaskY_ = 42,
     }
 
+    /// Extend ImGuiTreeNodeFlags_
     enum ImGuiTreeNodeFlagsI : ImGuiTreeNodeFlags {
         ClipLabelForTrailingButton = cast(ImGuiTreeNodeFlags)268435456, /// FIXME-WIP: Hard-coded for CollapsingHeader()
         UpsideDownArrow = cast(ImGuiTreeNodeFlags)536870912, /// FIXME-WIP: Turn Down arrow into an Up arrow, for reversed trees (#6517)
         OpenOnMask_ = cast(ImGuiTreeNodeFlags)192,
     }
 
+    /// Flags for ImDrawList functions
+    /// (Legacy: bit 0 must always correspond to ImDrawFlags_Closed to be backward compatible with old API using a bool. Bits 1..3 must be unused)
     enum ImDrawFlags {
         None = 0,
         Closed = 1, /// PathStroke(), AddPolyline(): specify that shape should be closed (Important: this is always == 1 for legacy reason)
@@ -1305,6 +1426,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         RoundCornersMask_ = 496,
     }
 
+    /// Flags for ImGui::IsWindowFocused()
     enum ImGuiFocusedFlags {
         None = 0,
         ChildWindows = 1, /// Return true if any children of the window is focused
@@ -1315,6 +1437,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         RootAndChildWindows = 3,
     }
 
+    /// Extend ImGuiTabItemFlags_
     enum ImGuiTabItemFlagsI : ImGuiTabItemFlags {
         SectionMask_ = cast(ImGuiTabItemFlags)192,
         NoCloseButton = cast(ImGuiTabItemFlags)1048576, /// Track whether p_open was set or not (we'll need this info on the next frame to recompute ContentWidth during layout)
@@ -1323,6 +1446,9 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         Unsorted = cast(ImGuiTabItemFlags)8388608, /// [Docking] Trailing tabs with the _Unsorted flag will be sorted based on the DockOrder of their Window.
     }
 
+    /// Flags for DragFloat(), DragInt(), SliderFloat(), SliderInt() etc.
+    /// We use the same sets of flags for DragXXX() and SliderXXX() functions as the features are the same and it makes it easier to swap them.
+    /// (Those are per-item flags. There is shared behavior flag too: ImGuiIO: io.ConfigDragClickToInputText)
     enum ImGuiSliderFlags {
         None = 0,
         Logarithmic = 32, /// Make the widget logarithmic (linear otherwise). Consider using ImGuiSliderFlags_NoRoundToFormat with this if using a format-string with small amount of digits.
@@ -1336,6 +1462,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         InvalidMask_ = 1879048207, /// [Internal] We treat using those bits as being potentially a 'float power' argument from the previous API that has got miscast to this enum, and will trigger an assert if needed.
     }
 
+    /// A primary data type
     enum ImGuiDataType {
         S8 = 0, /// signed char / char (with sensible compilers)
         U8 = 1, /// unsigned char
@@ -1352,10 +1479,12 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         COUNT = 12,
     }
 
+    /// Extend ImGuiComboFlags_
     enum ImGuiComboFlagsI : ImGuiComboFlags {
         CustomPreview = cast(ImGuiComboFlags)1048576, /// enable BeginComboPreview()
     }
 
+    /// Enumeration for PushStyleColor() / PopStyleColor()
     enum ImGuiCol {
         Text = 0,
         TextDisabled = 1,
@@ -1418,6 +1547,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         COUNT = 58,
     }
 
+    /// Flags for InvisibleButton() [extended in imgui_internal.h]
     enum ImGuiButtonFlags {
         None = 0,
         MouseButtonLeft = 1, /// React on left mouse button (default)
@@ -1427,6 +1557,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         EnableNav = 8, /// InvisibleButton(): do not disable navigation/tabbing. Otherwise disabled by default.
     }
 
+    /// Flags stored in ImGuiViewport::Flags, giving indications to the platform backends.
     enum ImGuiViewportFlags {
         None = 0,
         IsPlatformWindow = 1, /// Represent a Platform Window
@@ -1445,6 +1576,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         IsFocused = 8192, /// Platform Window: Window is focused (last call to Platform_GetWindowFocus() returned true)
     }
 
+    /// Extend ImGuiSelectableFlags_
     enum ImGuiSelectableFlagsI : ImGuiSelectableFlags {
         NoHoldingActiveID = cast(ImGuiSelectableFlags)1048576,
         SelectOnNav = cast(ImGuiSelectableFlags)2097152, /// (WIP) Auto-select when moved into. This is not exposed in public API as to handle multi-select and modifiers we will need user to explicitly control focus scope. May be replaced with a BeginSelection() API.
@@ -1464,6 +1596,8 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         COUNT = 4,
     }
 
+    /// Enumeration for GetMouseCursor()
+    /// User code may request backend to display given cursor by calling SetMouseCursor(), which is why we have some cursors that are marked unused here
     enum ImGuiMouseCursor {
         None = -1,
         Arrow = 0,
@@ -1478,6 +1612,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         COUNT = 9,
     }
 
+    /// Flags for BeginMultiSelect()
     enum ImGuiMultiSelectFlags {
         None = 0,
         SingleSelect = 1, /// Disable selecting more than one item. This is available to allow single-selection code to share same code/logic if desired. It essentially disables the main purpose of BeginMultiSelect() tho!
@@ -1505,6 +1640,9 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         NoRounding = 8,
     }
 
+    /// Flags for ImGui::DockSpace(), shared/inherited by child nodes.
+    /// (Some flags can be applied to individual nodes directly)
+    /// FIXME-DOCK: Also see ImGuiDockNodeFlagsPrivate_ which may involve using the WIP and internal DockBuilder api.
     enum ImGuiDockNodeFlags {
         None = 0,
         KeepAliveOnly = 1, ///       /// Don't display the dockspace node but keep it alive. Windows docked into this dockspace node won't be undocked.
@@ -1516,6 +1654,8 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         NoUndocking = 128, ///       /// Disable undocking this node.
     }
 
+    /// Flags for ImGui::InputText()
+    /// (Those are per-item flags. There are shared flags in ImGuiIO: io.ConfigInputTextCursorBlink and io.ConfigInputTextEnterKeepActive)
     enum ImGuiInputTextFlags {
         None = 0,
         CharsDecimal = 1, /// Allow 0123456789.+-*/
@@ -1544,6 +1684,14 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         CallbackEdit = 8388608, /// Callback on any edit. Note that InputText() already returns true on edit + you can always use IsItemEdited(). The callback is useful to manipulate the underlying buffer while focus is active.
     }
 
+    /// Flags for OpenPopup*(), BeginPopupContext*(), IsPopupOpen() functions.
+    /// - To be backward compatible with older API which took an 'int mouse_button = 1' argument instead of 'ImGuiPopupFlags flags',
+    ///   we need to treat small flags values as a mouse button index, so we encode the mouse button in the first few bits of the flags.
+    ///   It is therefore guaranteed to be legal to pass a mouse button index in ImGuiPopupFlags.
+    /// - For the same reason, we exceptionally default the ImGuiPopupFlags argument of BeginPopupContextXXX functions to 1 instead of 0.
+    ///   IMPORTANT: because the default parameter is 1 (==ImGuiPopupFlags_MouseButtonRight), if you rely on the default parameter
+    ///   and want to use another flag, you need to pass in the ImGuiPopupFlags_MouseButtonRight flag explicitly.
+    /// - Multiple buttons currently cannot be combined/or-ed in those functions (we could allow it later).
     enum ImGuiPopupFlags {
         None = 0,
         MouseButtonLeft = 0, /// For BeginPopupContext*(): open on Left Mouse release. Guaranteed to always be == 0 (same as ImGuiMouseButton_Left)
@@ -1568,6 +1716,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         FromShortcut = 16, /// Activation requested by an item shortcut via SetNextItemShortcut() function.
     }
 
+    /// Flags for internal's BeginColumns(). This is an obsolete API. Prefer using BeginTable() nowadays!
     enum ImGuiOldColumnFlags {
         None = 0,
         NoBorder = 1, /// Disable column dividers
@@ -1577,6 +1726,9 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         GrowParentContentsSize = 16, /// Restore pre-1.51 behavior of extending the parent window contents size but _without affecting the columns width at all_. Will eventually remove.
     }
 
+    /// Flags for ImGui::IsItemHovered(), ImGui::IsWindowHovered()
+    /// Note: if you are trying to check whether your mouse should be dispatched to Dear ImGui or to your app, you should use 'io.WantCaptureMouse' instead! Please read the FAQ!
+    /// Note: windows with the ImGuiWindowFlags_NoInputs flag are ignored by IsWindowHovered() calls.
     enum ImGuiHoveredFlags {
         None = 0, /// Return true if directly over the item/window, not obstructed by another window, not obstructed by an active popup or modal blocking inputs under them.
         ChildWindows = 1, /// IsWindowHovered() only: Return true if any children of the window is hovered
@@ -1614,6 +1766,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         char[57] Desc; /// Arbitrarily sized buffer to hold a result (FIXME: could replace Results[] with a chunk stream?) FIXME: Now that we added CTRL+C this should be fixed.
     }
 
+    /// Data saved for each window pushed into the stack
     struct ImGuiWindowStackData {
         ImGuiWindow* Window;
         ImGuiLastItemData ParentLastItemDataBackup;
@@ -1621,6 +1774,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         bool DisabledOverrideReenable; /// Non-child window override disabled flag
     }
 
+    /// Routing table entry (sizeof() == 16 bytes)
     struct ImGuiKeyRoutingData {
         ImGuiKeyRoutingIndex NextEntryIndex;
         ImU16 Mods; /// Technically we'd only need 4-bits but for simplify we store ImGuiMod_ values which need 16-bits.
@@ -1630,6 +1784,11 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImGuiID RoutingNext;
     }
 
+    /// Transient data that are only needed between BeginTable() and EndTable(), those buffers are shared (1 per level of stacked table).
+    /// - Accessing those requires chasing an extra pointer so for very frequently used data we leave them in the main table structure.
+    /// - We also leave out of this structure data that tend to be particularly useful for debugging/metrics.
+    /// FIXME-TABLE: more transient data could be stored in a stacked ImGuiTableTempData: e.g. SortSpecs.
+    /// sizeof() ~ 136 bytes.
     struct ImGuiTableTempData {
         int TableIndex; /// Index in g.Tables.Buf[] pool
         float LastTimeActive; /// Last timestamp this structure was used
@@ -1647,6 +1806,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         int HostBackupItemWidthStackSize; //Backup of OuterWindow->DC.ItemWidthStack.Size at the end of BeginTable()
     }
 
+    /// Type information associated to one ImGuiDataType. Retrieve with DataTypeGetInfo().
     struct ImGuiDataTypeInfo {
         size_t Size; /// Size in bytes
         const(char)* Name; /// Short descriptive name for the type, for debugging
@@ -1654,6 +1814,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         const(char)* ScanFmt; /// Default scanf format for the type
     }
 
+    /// Storage for popup stacks (g.OpenPopupStack and g.BeginPopupStack)
     struct ImGuiPopupData {
         ImGuiID PopupId; /// Set on OpenPopup()
         ImGuiWindow* Window; /// Resolved on BeginPopup() - may stay unresolved if user never calls OpenPopup()
@@ -1665,6 +1826,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImVec2 OpenMousePos; /// Set on OpenPopup(), copy of mouse position at the time of opening popup
     }
 
+    /// Storage for one window
     struct ImGuiWindow {
         ImGuiContext* Ctx; /// Parent UI context (needs to be set explicitly by parent).
         char* Name; /// Window name, owned by the window.
@@ -1795,12 +1957,15 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImGuiID DockId; /// Backup of last valid DockNode->ID, so single window remember their dock node id even when they are not bound any more
     }
 
+    /// Routing table: maintain a desired owner for each possible key-chord (key + mods), and setup owner in NewFrame() when mods are matching.
+    /// Stored in main context (1 instance)
     struct ImGuiKeyRoutingTable {
         ImGuiKeyRoutingIndex[ImGuiKey.NamedKey_COUNT] Index; /// Index of first entry in Entries[]
         ImVector!(ImGuiKeyRoutingData) Entries;
         ImVector!(ImGuiKeyRoutingData) EntriesNext; /// Double-buffer to avoid reallocation (could use a shared buffer)
     }
 
+    /// sizeof() = 20
     struct ImGuiErrorRecoveryState {
         short SizeOfWindowStack;
         short SizeOfIDStack;
@@ -1822,6 +1987,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImRect ClipRect;
     }
 
+    /// sizeof() ~ 592 bytes + heap allocs described in TableBeginInitMemory()
     struct ImGuiTable {
         ImGuiID ID;
         ImGuiTableFlags Flags;
@@ -1938,6 +2104,9 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         bool HostSkipItems; /// Backup of InnerWindow->SkipItem at the end of BeginTable(), because we will overwrite InnerWindow->SkipItem on a per-column basis
     }
 
+    /// Transient per-window data, reset at the beginning of the frame. This used to be called ImGuiDrawContext, hence the DC variable name in ImGuiWindow.
+    /// (That's theory, in practice the delimitation between ImGuiWindow and ImGuiWindowTempData is quite tenuous and could be reconsidered..)
+    /// (This doesn't need a constructor because we zero-clear it as part of ImGuiWindow and all frame-temporary data are setup on Begin)
     struct ImGuiWindowTempData {
          
             /// Layout
@@ -1989,6 +2158,8 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImVector!(float) TextWrapPosStack; /// Store text wrap pos to restore (attention: .back() is not == TextWrapPos)
     }
 
+    /// Optional helper to apply multi-selection requests to existing randomly accessible storage.
+    /// Convenient if you want to quickly wire multi-select API on e.g. an array of bool or items storing their own selection state.
     struct ImGuiSelectionExternalStorage {
          
             /// Members
@@ -1996,6 +2167,8 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         void function(ImGuiSelectionExternalStorage* self,int idx,bool selected) AdapterSetItemSelected; /// e.g. AdapterSetItemSelected = [](ImGuiSelectionExternalStorage* self, int idx, bool selected)  ((MyItems**)self->UserData)[idx]->Selected = selected; 
     }
 
+    /// Hold rendering data for one glyph.
+    /// (Note: some language parsers may fail to convert the 31+1 bitfield members, in this case maybe drop store a single u32 or we can rework this)
     struct ImFontGlyph {
         uint Colored; /// Flag to indicate glyph is colored and should generally ignore tinting (make it usable with no shift on little-endian as this is used in loops)
         uint Visible; /// Flag to indicate glyph has no visible pixels (e.g. space). Allow early out when rendering.
@@ -2027,11 +2200,13 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImGuiID StorageId; /// Set by SetNextItemStorageID()
     }
 
+        /// [Internal]
     struct ImGuiTextRange {
         const(char)* b;
         const(char)* e;
     }
 
+    /// Returned by GetTypingSelectRequest(), designed to eventually be public.
     struct ImGuiTypingSelectRequest {
         ImGuiTypingSelectFlags Flags; /// Flags passed to GetTypingSelectRequest()
         int SearchBufferLen;
@@ -2052,6 +2227,8 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImGuiMouseSource MouseSource;
     }
 
+    /// [Internal] Storage used by IsKeyDown(), IsKeyPressed() etc functions.
+    /// If prior to 1.87 you used io.KeysDownDuration[] (which was marked as internal), you should use GetKeyData(key)->DownDuration and *NOT* io.KeysData[key]->DownDuration.
     struct ImGuiKeyData {
         bool Down; /// True for if key is down
         float DownDuration; /// Duration the key has been down (<0.0f: not pressed, 0.0f: just pressed, >0.0f: time held)
@@ -2059,6 +2236,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         float AnalogValue; /// 0.0f..1.0f for gamepad values
     }
 
+    /// Persistent storage for multi-select (as long as selection is alive)
     struct ImGuiMultiSelectState {
         ImGuiWindow* Window;
         ImGuiID ID;
@@ -2070,6 +2248,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImGuiSelectionUserData NavIdItem; /// SetNextItemSelectionUserData() value for NavId (if part of submitted items)
     }
 
+    /// Note that Max is exclusive, so perhaps should be using a Begin/End convention.
     struct ImGuiListClipperRange {
         int Min;
         int Max;
@@ -2078,6 +2257,8 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImS8 PosToIndexOffsetMax; /// Add to Min after converting to indices
     }
 
+    /// Font runtime data and rendering
+    /// ImFontAtlas automatically loads a default embedded font for you when you call GetTexDataAsAlpha8() or GetTexDataAsRGBA32().
     struct ImFont {
          
             /// [Internal] Members: Hot ~20/24 bytes (for CalcTextSize)
@@ -2106,6 +2287,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImU8[(0xFFFF+1)/8192/8] Used8kPagesMap; /// 1 bytes if ImWchar=ImWchar16, 16 bytes if ImWchar==ImWchar32. Store 1-bit for each block of 4K codepoints that has one active glyph. This is mainly used to facilitate iterations across all used codepoints.
     }
 
+    /// ImVec4: 4D vector used to store clipping rectangles, colors etc. [Compile-time configurable type]
     struct ImVec4 {
         float x;
         float y;
@@ -2132,22 +2314,27 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         void* UserData;
     }
 
+    /// Split/Merge functions are used to split the draw list into different layers which can be drawn into out of order.
+    /// This is used by the Columns/Tables API, so items of each column can be batched together in a same draw call.
     struct ImDrawListSplitter {
         int _Current; /// Current channel number (0)
         int _Count; /// Number of active channels (1+)
         ImVector!(ImDrawChannel) _Channels; /// Draw channels (not resized down so _Count might be < Channels.Size)
     }
 
+    /// [Internal] Key+Value for ImGuiStorage
     struct ImGuiStoragePair {
         ImGuiID key;
         union { int val_i; float val_f; void* val_p;} ;
     }
 
+    /// [Internal] For use by ImDrawListSplitter
     struct ImDrawChannel {
         ImVector!(ImDrawCmd) _CmdBuffer;
         ImVector!(ImDrawIdx) _IdxBuffer;
     }
 
+    /// sizeof() ~ 12
     struct ImGuiTableColumnSettings {
         float WidthOrWeight;
         ImGuiID UserID;
@@ -2159,10 +2346,32 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImU8 IsStretch;
     }
 
+    /// Helper: Growable text buffer for logging/accumulating text
+    /// (this could be called 'ImGuiTextBuilder' / 'ImGuiStringBuilder')
     struct ImGuiTextBuffer {
         ImVector!(char) Buf;
     }
 
+    /// Helper: Manually clip large list of items.
+    /// If you have lots evenly spaced items and you have random access to the list, you can perform coarse
+    /// clipping based on visibility to only submit items that are in view.
+    /// The clipper calculates the range of visible items and advance the cursor to compensate for the non-visible items we have skipped.
+    /// (Dear ImGui already clip items based on their bounds but: it needs to first layout the item to do so, and generally
+    ///  fetching/submitting your own data incurs additional cost. Coarse clipping using ImGuiListClipper allows you to easily
+    ///  scale using lists with tens of thousands of items without a problem)
+    /// Usage:
+    ///   ImGuiListClipper clipper;
+    ///   clipper.Begin(1000);         /// We have 1000 elements, evenly spaced.
+    ///   while (clipper.Step())
+    ///       for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++)
+    ///           ImGui::Text("line number %d", i);
+    /// Generally what happens is:
+    /// - Clipper lets you process the first element (DisplayStart = 0, DisplayEnd = 1) regardless of it being visible or not.
+    /// - User code submit that one element.
+    /// - Clipper can measure the height of the first element
+    /// - Clipper calculate the actual range of elements to display based on the current clipping rectangle, position the cursor before the first visible element.
+    /// - User code submit visible elements.
+    /// - The clipper also handles various subtleties related to keyboard/gamepad navigation, wrapping etc.
     struct ImGuiListClipper {
         ImGuiContext* Ctx; /// Parent UI context
         int DisplayStart; /// First item to display, updated by each call to Step()
@@ -2180,6 +2389,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImGuiMouseSource MouseSource;
     }
 
+    /// Storage for SetNexWindow** functions
     struct ImGuiNextWindowData {
         ImGuiNextWindowDataFlags Flags;
         ImGuiCond PosCond;
@@ -2205,6 +2415,8 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImGuiWindowRefreshFlags RefreshFlagsVal;
     }
 
+    /// (Optional) This is required when enabling multi-viewport. Represent the bounds of each connected monitor/display and their DPI.
+    /// We use this information for multiple DPI support + clamping the position of popups and tooltips so they don't straddle multiple monitors.
     struct ImGuiPlatformMonitor {
         ImVec2 MainPos; /// Coordinates of the area displayed on this monitor (Min = upper left, Max = bottom right)
         ImVec2 MainSize; /// Coordinates of the area displayed on this monitor (Min = upper left, Max = bottom right)
@@ -2231,6 +2443,8 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImGuiID HighlightViewportID;
     }
 
+    /// This extends ImGuiKeyData but only for named keys (legacy keys don't support the new features)
+    /// Stored in main context (1 per named key). In the future it might be merged into ImGuiKeyData.
     struct ImGuiKeyOwnerData {
         ImGuiID OwnerCurr;
         ImGuiID OwnerNext;
@@ -2238,11 +2452,19 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         bool LockUntilRelease; /// Reading this key requires explicit owner id (until key is released). Set by ImGuiInputFlags_LockUntilRelease. When this is true LockThisFrame is always true as well.
     }
 
+    /// Stacked style modifier, backup of modified data so we can restore it. Data type inferred from the variable.
     struct ImGuiStyleMod {
         ImGuiStyleVar VarIdx;
         union { int[2] BackupInt; float[2] BackupFloat;} ;
     }
 
+    /// - Currently represents the Platform Window created by the application which is hosting our Dear ImGui windows.
+    /// - With multi-viewport enabled, we extend this concept to have multiple active viewports.
+    /// - In the future we will extend this concept further to also represent Platform Monitor and support a "no main platform window" operation mode.
+    /// - About Main Area vs Work Area:
+    ///   - Main Area = entire viewport.
+    ///   - Work Area = entire viewport minus sections used by main menu bars (for platform windows), or by task bar (for platform monitor).
+    ///   - Windows are generally trying to stay within the Work Area of their host viewport.
     struct ImGuiViewport {
         ImGuiID ID; /// Unique identifier for the viewport
         ImGuiViewportFlags Flags; /// See ImGuiViewportFlags_
@@ -2268,6 +2490,22 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         bool PlatformRequestClose; /// Platform window requested closure (e.g. window was moved by the OS / host window manager, e.g. pressing ALT-F4)
     }
 
+    /// Optional helper to store multi-selection state + apply multi-selection requests.
+    /// - Used by our demos and provided as a convenience to easily implement basic multi-selection.
+    /// - Iterate selection with 'void* it = NULL; ImGuiID id; while (selection.GetNextSelectedItem(&it, &id))  ... '
+    ///   Or you can check 'if (Contains(id))  ... ' for each possible object if their number is not too high to iterate.
+    /// - USING THIS IS NOT MANDATORY. This is only a helper and not a required API.
+    /// To store a multi-selection, in your application you could:
+    /// - Use this helper as a convenience. We use our simple key->value ImGuiStorage as a std::set<ImGuiID> replacement.
+    /// - Use your own external storage: e.g. std::set<MyObjectId>, std::vector<MyObjectId>, interval trees, intrusively stored selection etc.
+    /// In ImGuiSelectionBasicStorage we:
+    /// - always use indices in the multi-selection API (passed to SetNextItemSelectionUserData(), retrieved in ImGuiMultiSelectIO)
+    /// - use the AdapterIndexToStorageId() indirection layer to abstract how persistent selection data is derived from an index.
+    /// - use decently optimized logic to allow queries and insertion of very large selection sets.
+    /// - do not preserve selection order.
+    /// Many combinations are possible depending on how you prefer to store your items and how you prefer to store your selection.
+    /// Large applications are likely to eventually want to get rid of this indirection layer and do their own thing.
+    /// See https://github.com/ocornut/imgui/wiki/Multi-Select for details and pseudo-code using this helper.
     struct ImGuiSelectionBasicStorage {
          
             /// Members
@@ -2279,6 +2517,13 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImGuiStorage _Storage; /// [Internal] Selection set. Think of this as similar to e.g. std::set<ImGuiID>. Prefer not accessing directly: iterate with GetNextSelectedItem().
     }
 
+    /// [ALPHA] Rarely used / very advanced uses only. Use with SetNextWindowClass() and DockSpace() functions.
+    /// Important: the content of this class is still highly WIP and likely to change and be refactored
+    /// before we stabilize Docking features. Please be mindful if using this.
+    /// Provide hints:
+    /// - To the platform backend via altered viewport flags (enable/disable OS decoration, OS task bar icons, etc.)
+    /// - To the platform backend for OS level parent/child relationships of viewport.
+    /// - To the docking system for various options and filtering.
     struct ImGuiWindowClass {
         ImGuiID ClassId; /// User data. 0 = Default class (unclassed). Windows of different classes cannot be docked with each others.
         ImGuiID ParentViewportId; /// Hint for the platform backend. -1: use default. 0: request platform backend to not parent the platform. != 0: request platform backend to create a parent<>child relationship between the platform windows. Not conforming backends are free to e.g. parent every viewport to the main viewport or not.
@@ -2291,6 +2536,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         bool DockingAllowUnclassed; /// Set to true to allow windows of this class to be docked/merged with an unclassed window. /// FIXME-DOCK: Move to DockNodeFlags override?
     }
 
+    /// This is designed to be stored in a single ImChunkStream (1 header followed by N ImGuiTableColumnSettings, etc.)
     struct ImGuiTableSettings {
         ImGuiID ID; /// Set to 0 to invalidate/delete the setting
         ImGuiTableFlags SaveFlags; /// Indicate data we want to save using the Resizable/Reorderable/Sortable/Hideable flags (could be using its own flags..)
@@ -2300,6 +2546,23 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         bool WantApply; /// Set when loaded from .ini data (to enable merging/loading .ini data into an already running context)
     }
 
+    /// Load and rasterize multiple TTF/OTF fonts into a same texture. The font atlas will build a single texture holding:
+    ///  - One or more fonts.
+    ///  - Custom graphics data needed to render the shapes needed by Dear ImGui.
+    ///  - Mouse cursor shapes for software cursor rendering (unless setting 'Flags |= ImFontAtlasFlags_NoMouseCursors' in the font atlas).
+    /// It is the user-code responsibility to setup/build the atlas, then upload the pixel data into a texture accessible by your graphics api.
+    ///  - Optionally, call any of the AddFont*** functions. If you don't call any, the default font embedded in the code will be loaded for you.
+    ///  - Call GetTexDataAsAlpha8() or GetTexDataAsRGBA32() to build and retrieve pixels data.
+    ///  - Upload the pixels data into a texture within your graphics system (see imgui_impl_xxxx.cpp examples)
+    ///  - Call SetTexID(my_tex_id); and pass the pointer/identifier to your texture in a format natural to your graphics API.
+    ///    This value will be passed back to you during rendering to identify the texture. Read FAQ entry about ImTextureID for more details.
+    /// Common pitfalls:
+    /// - If you pass a 'glyph_ranges' array to AddFont*** functions, you need to make sure that your array persist up until the
+    ///   atlas is build (when calling GetTexData*** or Build()). We only copy the pointer, not the data.
+    /// - Important: By default, AddFontFromMemoryTTF() takes ownership of the data. Even though we are not writing to it, we will free the pointer on destruction.
+    ///   You can set font_cfg->FontDataOwnedByAtlas=false to keep ownership of your data and it won't be freed,
+    /// - Even though many functions are suffixed with "TTF", OTF data is supported just as well.
+    /// - This is an old API and it is currently awkward for those and various other reasons! We will address them in the future!
     struct ImFontAtlas {
         ImFontAtlasFlags Flags; /// Build flags (see ImFontAtlasFlags_)
         ImTextureID TexID; /// User data to refer to the texture once it has been uploaded to user's graphic systems. It is passed back to you during rendering via the ImDrawCmd structure.
@@ -2329,6 +2592,10 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         int PackIdLines; /// Custom texture rectangle ID for baked anti-aliased lines
     }
 
+    /// Store data emitted by TreeNode() for usage by TreePop()
+    /// - To implement ImGuiTreeNodeFlags_NavLeftJumpsBackHere: store the minimum amount of data
+    ///   which we can't infer in TreePop(), to perform the equivalent of NavApplyItemToResult().
+    ///   Only stored when the node is a potential candidate for landing on a Left arrow jump.
     struct ImGuiTreeNodeStackData {
         ImGuiID ID;
         ImGuiTreeNodeFlags TreeFlags;
@@ -2336,6 +2603,9 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImRect NavRect; /// Used for nav landing
     }
 
+    /// Parameters for TableAngledHeadersRowEx()
+    /// This may end up being refactored for more general purpose.
+    /// sizeof() ~ 12 bytes
     struct ImGuiTableHeaderData {
         ImGuiTableColumnIdx Index; /// Column index
         ImU32 TextColor;
@@ -2343,11 +2613,13 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImU32 BgColor1;
     }
 
+    /// Storage for PushFocusScope(), g.FocusScopeStack[], g.NavFocusRoute[]
     struct ImGuiFocusScopeData {
         ImGuiID ID;
         ImGuiID WindowID;
     }
 
+    /// Temporary clipper data, buffers shared/reused between instances
     struct ImGuiListClipperData {
         ImGuiListClipper* ListClipper;
         float LossynessOffset;
@@ -2356,6 +2628,8 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImVector!(ImGuiListClipperRange) Ranges;
     }
 
+    /// ImGuiViewport Private/Internals fields (cardinal sin: we are using inheritance!)
+    /// Every instance of ImGuiViewport is in fact a ImGuiViewportP.
     struct ImGuiViewportP {
         ImGuiViewport _ImGuiViewport;
         ImGuiWindow* Window; /// Set when the viewport is owned by a window (and ImGuiViewportFlags_CanHostOtherWindows is NOT set)
@@ -2390,6 +2664,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         float x;
     }
 
+    /// Storage for navigation query/results
     struct ImGuiNavItemData {
         ImGuiWindow* Window; /// Init,Move    /// Best candidate window (result->ItemWindow->RootWindowForNav == request->Window)
         ImGuiID ID; /// Init,Move    /// Best candidate item ID
@@ -2402,6 +2677,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImGuiSelectionUserData SelectionUserData; //I+Mov    /// Best candidate SetNextItemSelectionUserData() value. Valid if (ItemFlags & ImGuiItemFlags_HasSelectionUserData)
     }
 
+    /// Selection request item
     struct ImGuiSelectionRequest {
          
             //------------------------------------------/// BeginMultiSelect / EndMultiSelect
@@ -2412,10 +2688,13 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImGuiSelectionUserData RangeLastItem; ///                  /  ms:w, app:r   /// Parameter for SetRange request (this is generally == RangeSrcItem when shift selecting from bottom to top). Inclusive!
     }
 
+    /// This structure is likely to evolve as we add support for incremental atlas updates.
+    /// Conceptually this could be in ImGuiPlatformIO, but we are far from ready to make this public.
     struct ImFontBuilderIO {
         bool function(ImFontAtlas* atlas) FontBuilder_Build;
     }
 
+    /// Storage data for BeginComboPreview()/EndComboPreview()
     struct ImGuiComboPreviewData {
         ImRect PreviewRect;
         ImVec2 BackupCursorPos;
@@ -2425,11 +2704,14 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImGuiLayoutType BackupLayout;
     }
 
+    /// Helper: ImVec2ih (2D vector, half-size integer, for long-term packed storage)
     struct ImVec2ih {
         short x;
         short y;
     }
 
+    /// Resizing callback data to apply custom constraint. As enabled by SetNextWindowSizeConstraints(). Callback is called during the next Begin().
+    /// NB: For basic min/max size constraint on each axis you don't need to use the callback! The SetNextWindowSizeConstraints() parameters are enough.
     struct ImGuiSizeCallbackData {
         void* UserData; /// Read-only.   What user passed to SetNextWindowSizeConstraints(). Generally store an integer or float in here (need reinterpret_cast<>).
         ImVec2 Pos; /// Read-only.   Window position, for reference.
@@ -2443,11 +2725,18 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         float InitialWidth;
     }
 
+    /// Helper: ImRect (2D axis aligned bounding-box)
+    /// NB: we can't rely on ImVec2 math operators being available here!
     struct ImRect {
         ImVec2 Min; /// Upper-left
         ImVec2 Max; /// Lower-right
     }
 
+    /// Main IO structure returned by BeginMultiSelect()/EndMultiSelect().
+    /// This mainly contains a list of selection requests.
+    /// - Use 'Demo->Tools->Debug Log->Selection' to see requests as they happen.
+    /// - Some fields are only useful if your list is dynamic and allows deletion (getting post-deletion focus/state right is shown in the demo)
+    /// - Below: who reads/writes each fields? 'r'=read, 'w'=write, 'ms'=multi-select code, 'app'=application/user code.
     struct ImGuiMultiSelectIO {
          
             //------------------------------------------/// BeginMultiSelect / EndMultiSelect
@@ -2614,6 +2903,8 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImVector!(ImWchar) InputQueueCharacters; /// Queue of _characters_ input (obtained by platform backend). Fill using AddInputCharacter() helper.
     }
 
+    /// Per-instance data that needs preserving across frames (seemingly most others do not need to be preserved aside from debug needs. Does that means they could be moved to ImGuiTableTempData?)
+    /// sizeof() ~ 24 bytes
     struct ImGuiTableInstanceData {
         ImGuiID TableInstanceID;
         float LastOuterHeight; /// Outer height from last frame
@@ -2623,6 +2914,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         int HoveredRowNext; /// Index of row hovered this frame, set after encountering it.
     }
 
+    /// Data payload for Drag and Drop operations: AcceptDragDropPayload(), GetDragDropPayload()
     struct ImGuiPayload {
          
             /// Members
@@ -2637,6 +2929,8 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         bool Delivery; /// Set when AcceptDragDropPayload() was called and mouse button is released over the target item.
     }
 
+    /// Helper: ImBitVector
+    /// Store 1-bit per value.
     struct ImBitVector {
         ImVector!(ImU32) Storage;
     }
@@ -2647,11 +2941,21 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         float AnalogValue;
     }
 
+    /// Stacked color modifier, backup of modified data so we can restore it
     struct ImGuiColorMod {
         ImGuiCol Col;
         ImVec4 BackupValue;
     }
 
+    /// Shared state of InputText(), passed as an argument to your callback when a ImGuiInputTextFlags_Callback* flag is used.
+    /// The callback function should return 0 by default.
+    /// Callbacks (follow a flag name and see comments in ImGuiInputTextFlags_ declarations for more details)
+    /// - ImGuiInputTextFlags_CallbackEdit:        Callback on buffer edit. Note that InputText() already returns true on edit + you can always use IsItemEdited(). The callback is useful to manipulate the underlying buffer while focus is active.
+    /// - ImGuiInputTextFlags_CallbackAlways:      Callback on each iteration
+    /// - ImGuiInputTextFlags_CallbackCompletion:  Callback on pressing TAB
+    /// - ImGuiInputTextFlags_CallbackHistory:     Callback on pressing Up/Down arrows
+    /// - ImGuiInputTextFlags_CallbackCharFilter:  Callback on character inputs to replace or discard them. Modify 'EventChar' to replace or discard, or return 1 in callback to discard.
+    /// - ImGuiInputTextFlags_CallbackResize:      Callback on buffer capacity changes request (beyond 'buf_size' parameter value), allowing the string to grow.
     struct ImGuiInputTextCallbackData {
         ImGuiContext* Ctx; /// Parent UI context
         ImGuiInputTextFlags EventFlag; /// One ImGuiInputTextFlags_Callback*    /// Read-only
@@ -2677,11 +2981,14 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         bool Focused;
     }
 
+    /// Transient cell data stored per row.
+    /// sizeof() ~ 6 bytes
     struct ImGuiTableCellData {
         ImU32 BgColor; /// Actual color
         ImGuiTableColumnIdx Column; /// Column number
     }
 
+    /// A font input/source (we may rename this to ImFontSource in the future)
     struct ImFontConfig {
         void* FontData; ///          /// TTF/OTF data
         int FontDataSize; ///          /// TTF/OTF data size
@@ -2706,6 +3013,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImFont* DstFont;
     }
 
+    /// Status storage for the last submitted item
     struct ImGuiLastItemData {
         ImGuiID ID;
         ImGuiItemFlags ItemFlags; /// See ImGuiItemFlags_ (called 'InFlags' before v1.91.4).
@@ -2719,12 +3027,17 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImGuiKeyChord Shortcut; /// Shortcut at the time of submitting item. ONLY VALID IF (StatusFlags & ImGuiItemStatusFlags_HasShortcut) is set..
     }
 
+    /// [Internal] For use by ImDrawList
     struct ImDrawCmdHeader {
         ImVec4 ClipRect;
         ImTextureID TextureId;
         uint VtxOffset;
     }
 
+    /// Data shared between all ImDrawList instances
+    /// Conceptually this could have been called e.g. ImDrawListSharedContext
+    /// Typically one ImGui context would create and maintain one of this.
+    /// You may want to create your own instance of you try to ImDrawList completely without ImGui. In that case, watch out for future changes to this structure.
     struct ImDrawListSharedData {
         ImVec2 TexUvWhitePixel; /// UV of white pixel in the atlas
         const(ImVec4)* TexUvLines; /// UV of anti-aliased lines in the atlas
@@ -2749,6 +3062,9 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImGuiDebugAllocEntry[6] LastEntriesBuf; /// Track last 6 frames that had allocations
     }
 
+    /// All draw data to render a Dear ImGui frame
+    /// (NB: the style and the naming convention here is a little inconsistent, we currently preserve them for backward compatibility purpose,
+    /// as this is one of the oldest structure exposed by the library! Basically, ImDrawList == CmdList)
     struct ImDrawData {
         bool Valid; /// Only valid after Render() is called and before the next NewFrame() is called.
         int CmdListsCount; /// Number of ImDrawList* to render
@@ -2761,6 +3077,8 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImGuiViewport* OwnerViewport; /// Viewport carrying the ImDrawData instance, might be of use to the renderer (generally not).
     }
 
+    /// Internal state of the currently focused/edited text input box
+    /// For a given item ID, access with ImGui::GetInputTextState()
     struct ImGuiInputTextState {
         ImGuiContext* Ctx; /// parent UI context (needs to be set explicitly by parent).
         ImStbTexteditState* Stb; /// State for stb_textedit.h
@@ -2796,11 +3114,17 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImU8[8] Data; /// Opaque storage to fit any data up to ImGuiDataType_COUNT
     }
 
+    /// Internal temporary state for deactivating InputText() instances.
     struct ImGuiInputTextDeactivatedState {
         ImGuiID ID; /// widget id owning the text state (which just got deactivated)
         ImVector!(char) TextA; /// text buffer
     }
 
+    /// Typically, 1 command = 1 GPU draw call (unless command is a callback)
+    /// - VtxOffset: When 'io.BackendFlags & ImGuiBackendFlags_RendererHasVtxOffset' is enabled,
+    ///   this fields allow us to render meshes larger than 64K vertices while keeping 16-bit indices.
+    ///   Backends made for <1.71. will typically ignore the VtxOffset fields.
+    /// - The ClipRect/TextureId/VtxOffset fields must be contiguous as we memcmp() them together (this is asserted for).
     struct ImDrawCmd {
         ImVec4 ClipRect; /// 4*4  /// Clipping rectangle (x1, y1, x2, y2). Subtract ImDrawData->DisplayPos to get clipping rectangle in "viewport" coordinates
         ImTextureID TextureId; /// 4-8  /// User-provided texture ID. Set by user in ImfontAtlas::SetTexID() for fonts or passed to Image*() functions. Ignore if never using images or multiple fonts atlas.
@@ -2821,6 +3145,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         void* UserData;
     }
 
+    /// State for ID Stack tool queries
     struct ImGuiIDStackTool {
         int LastActiveFrame;
         int StackLevel; /// -1: query stack and resize Results, >= 0: individual stack level
@@ -2830,6 +3155,8 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         float CopyToClipboardLastTime;
     }
 
+    /// Helper: ImGuiTextIndex
+    /// Maintain a line index for a text buffer. This is a strong candidate to be moved into the public API.
     struct ImGuiTextIndex {
         ImVector!(int) LineOffsets;
         int EndOffset; /// Because we don't own text buffer we need to maintain EndOffset (may bake in LineOffsets?)
@@ -2856,6 +3183,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImRect BoxSelectRectCurr;
     }
 
+    /// sizeof() 156~192
     struct ImGuiDockNode {
         ImGuiID ID;
         ImGuiDockNodeFlags SharedFlags; /// (Write) Flags shared by all nodes of a same dockspace hierarchy (inherited from the root node)
@@ -2901,22 +3229,34 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         bool WantHiddenTabBarToggle;
     }
 
+    /// Helper: Key->Value storage
+    /// Typically you don't have to worry about this since a storage is held within each Window.
+    /// We use it to e.g. store collapse state for a tree (Int 0/1)
+    /// This is optimized for efficient lookup (dichotomy into a contiguous buffer) and rare insertion (typically tied to user interactions aka max once a frame)
+    /// You can use it as custom user storage for temporary values. Declare your own storage if, for example:
+    /// - You want to manipulate the open/close state of a particular sub-tree in your interface (tree node uses Int 0/1 to store their state).
+    /// - You want to store custom debug data easily without adding or editing structures in your code (probably not efficient, but convenient)
+    /// Types are NOT stored, so it is up to you to make sure your Key don't collide with different types.
     struct ImGuiStorage {
          
             /// [Internal]
         ImVector!(ImGuiStoragePair) Data;
     }
 
+    /// Helper to build glyph ranges from text/string data. Feed your application strings/characters to it then call BuildRanges().
+    /// This is essentially a tightly packed of vector of 64k booleans = 8KB storage.
     struct ImFontGlyphRangesBuilder {
         ImVector!(ImU32) UsedChars; /// Store 1-bit per Unicode code point (0=unused, 1=used)
     }
 
+    /// Helper: Parse and apply text filters. In format "aaaaa[,bbbb][,ccccc]"
     struct ImGuiTextFilter {
         char[256] InputBuf;
         ImVector!(ImGuiTextRange) Filters;
         int CountGrep;
     }
 
+    /// See ImFontAtlas::AddCustomRectXXX functions.
     struct ImFontAtlasCustomRect {
         ushort X; /// Output   /// Packed position in Atlas
         ushort Y; /// Output   /// Packed position in Atlas
@@ -2931,6 +3271,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImFont* Font; /// Input    /// For custom font glyphs only: target font
     }
 
+    /// Storage for a tab bar (sizeof() 160 bytes)
     struct ImGuiTabBar {
         ImGuiWindow* Window;
         ImVector!(ImGuiTabItem) Tabs;
@@ -2987,6 +3328,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImU32 Offset; /// Offset in parent structure
     }
 
+    /// Data used by IsItemDeactivated()/IsItemDeactivatedAfterEdit() functions
     struct ImGuiDeactivatedItemData {
         ImGuiID ID;
         int ElapseFrame;
@@ -3000,6 +3342,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImU32 col;
     }
 
+    /// Stacked storage data for BeginGroup()/EndGroup()
     struct ImGuiGroupData {
         ImGuiID WindowID;
         ImVec2 BackupCursorPos;
@@ -3016,6 +3359,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         bool EmitItem;
     }
 
+    /// Access via ImGui::GetPlatformIO()
     struct ImGuiPlatformIO {
              /// Optional: Access OS clipboard
             /// (default to use native Win32 clipboard on Windows, otherwise uses a private clipboard. Override to access OS clipboard on other architectures)
@@ -3070,6 +3414,10 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImVector!(ImGuiViewport*) Viewports; /// Main viewports, followed by all secondary viewports.
     }
 
+    /// Helper: ImColor() implicitly converts colors to either ImU32 (packed 4x1 byte) or ImVec4 (4x1 float)
+    /// Prefer using IM_COL32() macros if you want a guaranteed compile-time ImU32 for usage with ImDrawList API.
+    /// **Avoid storing ImColor! Store either u32 of ImVec4. This is not a full-featured color class. MAY OBSOLETE.
+    /// **None of the ImGui API are using ImColor directly but you can use it as a convenience to pass colors in either ImU32 or ImVec4 formats. Explicitly cast to ImU32 or ImVec4 if needed.
     struct ImColor {
         ImVec4 Value;
     }
@@ -3511,6 +3859,10 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         char[64] TempKeychordName;
     }
 
+    /// [Internal] sizeof() ~ 112
+    /// We use the terminology "Enabled" to refer to a column that is not Hidden by user/api.
+    /// We use the terminology "Clipped" to refer to a column that is out of sight because of scrolling/clipping.
+    /// This is in contrast with some user-facing api such as IsItemVisible() / IsRectVisible() which use "Visible" to mean "not clipped".
     struct ImGuiTableColumn {
         ImGuiTableColumnFlags Flags; /// Flags after some patching (not directly same as provided by user). See ImGuiTableColumnFlags_
         float WidthGiven; /// Final/actual width visible == (MaxX - MinX), locked in TableUpdateLayout(). May be > WidthRequest to honor minimum width, may be < WidthRequest to honor shrinking columns down in tight space.
@@ -3556,12 +3908,17 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImU8 SortDirectionsAvailList; /// Ordered list of available sort directions (2-bits each, total 8-bits)
     }
 
+    /// Sorting specifications for a table (often handling sort specs for a single column, occasionally more)
+    /// Obtained by calling TableGetSortSpecs().
+    /// When 'SpecsDirty == true' you can sort your data. It will be true with sorting specs have changed since last call, or the first time.
+    /// Make sure to set 'SpecsDirty = false' after sorting, else you may wastefully sort your data every frame!
     struct ImGuiTableSortSpecs {
         const ImGuiTableColumnSortSpecs* Specs; /// Pointer to sort spec array.
         int SpecsCount; /// Sort spec count. Most often 1. May be > 1 when ImGuiTableFlags_SortMulti is enabled. May be == 0 when ImGuiTableFlags_SortTristate is enabled.
         bool SpecsDirty; /// Set to true when specs have changed since last time! Use this to sort again, then clear the flag.
     }
 
+    /// Sorting specification for one column of a table (sizeof == 12 bytes)
     struct ImGuiTableColumnSortSpecs {
         ImGuiID ColumnUserID; /// User id of the column (if specified by a TableSetupColumn() call)
         ImS16 ColumnIndex; /// Index of the column
@@ -3569,6 +3926,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImGuiSortDirection SortDirection; /// ImGuiSortDirection_Ascending or ImGuiSortDirection_Descending
     }
 
+    /// Temporary storage for multi-select
     struct ImGuiMultiSelectTempData {
         ImGuiMultiSelectIO IO; /// MUST BE FIRST FIELD. Requests are set and returned by BeginMultiSelect()/EndMultiSelect() + written to by user during the loop.
         ImGuiMultiSelectState* Storage;
@@ -3588,10 +3946,15 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         bool RangeDstPassedBy; /// Set by the item that matches NavJustMovedToId when IsSetRange is set.
     }
 
+    /// Helper: Execute a block of code at maximum once a frame. Convenient if you want to quickly create a UI within deep-nested code that runs multiple times every frame.
+    /// Usage: static ImGuiOnceUponAFrame oaf; if (oaf) ImGui::Text("This will be called only once per frame");
     struct ImGuiOnceUponAFrame {
         int RefFrame;
     }
 
+    /// Windows data saved in imgui.ini file
+    /// Because we never destroy or rename ImGuiWindowSettings, we can store the names in a separate buffer easily.
+    /// (this is designed to be stored in a ImChunkStream buffer, with the variable-length Name following our structure)
     struct ImGuiWindowSettings {
         ImGuiID ID;
         ImVec2ih Pos; /// NB: Settings position are stored RELATIVE to the viewport! Whereas runtime ones are absolute positions.
@@ -3607,12 +3970,22 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         bool WantDelete; /// Set to invalidate/delete the settings entry
     }
 
+    /// (Optional) Support for IME (Input Method Editor) via the platform_io.Platform_SetImeDataFn() function.
     struct ImGuiPlatformImeData {
         bool WantVisible; /// A widget wants the IME to be visible
         ImVec2 InputPos; /// Position of the input cursor
         float InputLineHeight; /// Line height
     }
 
+    /// Draw command list
+    /// This is the low-level list of polygons that ImGui:: functions are filling. At the end of the frame,
+    /// all command lists are passed to your ImGuiIO::RenderDrawListFn function for rendering.
+    /// Each dear imgui window contains its own ImDrawList. You can use ImGui::GetWindowDrawList() to
+    /// access the current window draw list and draw custom primitives.
+    /// You can interleave normal ImGui:: calls and adding primitives to the current draw list.
+    /// In single viewport mode, top-left is == GetMainViewport()->Pos (generally 0,0), bottom-right is == GetMainViewport()->Pos+Size (generally io.DisplaySize).
+    /// You are totally free to apply whatever transformation matrix you want to the data (depending on the use of the transformation you may want to apply it to ClipRect as well!)
+    /// Important: Primitives are always added to the list and not culled (culling is done at higher-level by ImGui:: functions), if you use this API a lot consider coarse culling your drawn objects.
     struct ImDrawList {
          
             /// This is what you have to render
@@ -3635,6 +4008,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         const(char)* _OwnerName; /// Pointer to owner window's name for debugging
     }
 
+    /// Storage for GetTypingSelectRequest()
     struct ImGuiTypingSelectState {
         ImGuiTypingSelectRequest Request; /// User-facing data
         char[64] SearchBuffer; /// Search buffer: no need to make dynamic as this search is very transient.
@@ -3644,6 +4018,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         bool SingleCharModeLock; /// After a certain single char repeat count we lock into SingleCharMode. Two benefits: 1) buffer never fill, 2) we can provide an immediate SingleChar mode without timer elapsing.
     }
 
+    /// Simple column measurement, currently used for MenuItem() only.. This is very short-sighted/throw-away code and NOT a generic helper.
     struct ImGuiMenuColumns {
         ImU32 TotalWidth;
         ImU32 NextTotalWidth;
@@ -3659,6 +4034,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImGuiID HoveredViewportID;
     }
 
+    /// Storage for one active tab item (sizeof() 48 bytes)
     struct ImGuiTabItem {
         ImGuiID ID;
         ImGuiTabItemFlags Flags;
@@ -3675,12 +4051,15 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         bool WantClose; /// Marked as closed by SetTabItemClosed()
     }
 
+    /// FIXME: Structures in the union below need to be declared as anonymous unions appears to be an extension?
+    /// Using ImVec2() would fail on Clang 'union member 'MousePos' has a non-trivial default constructor'
     struct ImGuiInputEventMousePos {
         float PosX;
         float PosY;
         ImGuiMouseSource MouseSource;
     }
 
+    /// We don't store style.Alpha: dock_node->LastBgColor embeds it and otherwise it would only affect the docking tab, which intuitively I would say we don't want to.
     struct ImGuiWindowDockStyle {
         ImU32[ImGuiWindowDockStyleCol.COUNT] Colors;
     }
