@@ -9,21 +9,19 @@ import core.stdc.stdarg;
 import core.stdc.string;
 
 extern (C) {
-    struct ImGuiDockRequest;
     alias ImS16 = short;
     alias ImU32 = uint;
     alias ImGuiSizeCallback = void     function(ImGuiSizeCallbackData* data);
     alias ImGuiContextHookCallback = void  function(ImGuiContext* ctx, ImGuiContextHook* hook);
     alias ImS8 = byte;
     alias ImU64 = ulong;
-    alias ImWchar = ImWchar16;
     alias ImGuiID = uint;
     alias ImGuiTableDrawChannelIdx = ImU16;
+    alias ImWchar = ImWchar16;
     alias ImGuiInputTextCallback = int      function(ImGuiInputTextCallbackData* data);
     alias ImDrawIdx = ushort;
     alias ImPoolIdx = int;
     alias ImDrawCallback = void  function(const ImDrawList* parent_list, const ImDrawCmd* cmd);
-    struct ImGuiDockNodeSettings;
     alias ImS32 = int;
     alias ImGuiKeyChord = int;
     alias ImGuiMemFreeFunc = void     function(void* ptr, void* user_data);
@@ -149,6 +147,10 @@ extern (C) {
             Capacity = new_capacity; 
         }
     
+        ref auto opIndex(size_t index)
+        {
+            return Data[index];
+        }
     
         // NB: It is illegal to call push_back/push_front/insert with a reference pointing inside the 
         // ImVector data itself! e.g. v.push_back(v[10]) is forbidden.
@@ -421,9 +423,11 @@ extern (C) {
         COUNT = 8,
     }
 
-    enum ImGuiPlotType {
-        Lines = 0,
-        Histogram = 1,
+    enum ImGuiNavRenderCursorFlags {
+        None = 0,
+        Compact = 2, /// Compact highlight, no padding/distance from focused item
+        AlwaysDraw = 4, /// Draw rectangular highlight if (g.NavId == id) even when g.NavCursorVisible == false, aka even when using the mouse.
+        NoRounding = 8,
     }
 
     enum ImGuiNextItemDataFlags {
@@ -570,6 +574,11 @@ extern (C) {
         SupportedBySetNextItemShortcut = cast(ImGuiInputFlags)523519,
         SupportedBySetKeyOwner = cast(ImGuiInputFlags)3145728,
         SupportedBySetItemKeyOwner = cast(ImGuiInputFlags)15728640,
+    }
+
+    enum ImGuiPlotType {
+        Lines = 0,
+        Histogram = 1,
     }
 
     /// Extend ImGuiTabBarFlags_
@@ -1633,11 +1642,11 @@ extern (C) {
         NavWrapX = 65536, /// [Temporary] Enable navigation wrapping on X axis. Provided as a convenience because we don't have a design for the general Nav API for this yet. When the more general feature be public we may obsolete this flag in favor of new one.
     }
 
-    enum ImGuiNavRenderCursorFlags {
+    enum ImGuiDockRequestType {
         None = 0,
-        Compact = 2, /// Compact highlight, no padding/distance from focused item
-        AlwaysDraw = 4, /// Draw rectangular highlight if (g.NavId == id) even when g.NavCursorVisible == false, aka even when using the mouse.
-        NoRounding = 8,
+        Dock = 1,
+        Undock = 2,
+        Split = 3, /// Split is the same as Dock but without a DockPayload
     }
 
     /// Flags for ImGui::DockSpace(), shared/inherited by child nodes.
@@ -1985,6 +1994,18 @@ extern (C) {
         float OffsetNormBeforeResize;
         ImGuiOldColumnFlags Flags; /// Not exposed
         ImRect ClipRect;
+    }
+
+    struct ImGuiDockRequest {
+        ImGuiDockRequestType Type;
+        ImGuiWindow* DockTargetWindow; /// Destination/Target Window to dock into (may be a loose window or a DockNode, might be NULL in which case DockTargetNode cannot be NULL)
+        ImGuiDockNode* DockTargetNode; /// Destination/Target Node to dock into
+        ImGuiWindow* DockPayload; /// Source/Payload window to dock (may be a loose window or a DockNode), [Optional]
+        ImGuiDir DockSplitDir;
+        float DockSplitRatio;
+        bool DockSplitOuter;
+        ImGuiWindow* UndockTargetWindow;
+        ImGuiDockNode* UndockTargetNode;
     }
 
     /// sizeof() ~ 592 bytes + heap allocs described in TableBeginInitMemory()
@@ -2517,6 +2538,18 @@ extern (C) {
         ImGuiStorage _Storage; /// [Internal] Selection set. Think of this as similar to e.g. std::set<ImGuiID>. Prefer not accessing directly: iterate with GetNextSelectedItem().
     }
 
+    struct ImGuiDockPreviewData {
+        ImGuiDockNode FutureNode;
+        bool IsDropAllowed;
+        bool IsCenterAvailable;
+        bool IsSidesAvailable; /// Hold your breath, grammar freaks..
+        bool IsSplitDirExplicit; /// Set when hovered the drop rect (vs. implicit SplitDir==None when hovered the window)
+        ImGuiDockNode* SplitNode;
+        ImGuiDir SplitDir;
+        float SplitRatio;
+        ImRect[4+1] DropRectsDraw; /// May be slightly different from hit-testing drop rects used in DockNodeCalcDropRects()
+    }
+
     /// [ALPHA] Rarely used / very advanced uses only. Use with SetNextWindowClass() and DockSpace() functions.
     /// Important: the content of this class is still highly WIP and likely to change and be refactored
     /// before we stabilize Docking features. Please be mindful if using this.
@@ -2692,6 +2725,20 @@ extern (C) {
     /// Conceptually this could be in ImGuiPlatformIO, but we are far from ready to make this public.
     struct ImFontBuilderIO {
         bool function(ImFontAtlas* atlas) FontBuilder_Build;
+    }
+
+    /// Persistent Settings data, stored contiguously in SettingsNodes (sizeof() ~32 bytes)
+    struct ImGuiDockNodeSettings {
+        ImGuiID ID;
+        ImGuiID ParentNodeId;
+        ImGuiID ParentWindowId;
+        ImGuiID SelectedTabId;
+        byte SplitAxis;
+        char Depth;
+        ImGuiDockNodeFlags Flags; /// NB: We save individual flags one by one in ascii format (ImGuiDockNodeFlags_SavedFlagsMask_)
+        ImVec2ih Pos;
+        ImVec2ih Size;
+        ImVec2ih SizeRef;
     }
 
     /// Storage data for BeginComboPreview()/EndComboPreview()
@@ -4293,6 +4340,8 @@ extern (C) @nogc nothrow {
     void ImGuiDebugAllocInfo_destroy(ImGuiDebugAllocInfo* self);
     ImGuiDockContext* ImGuiDockContext_ImGuiDockContext();
     void ImGuiDockContext_destroy(ImGuiDockContext* self);
+    ImGuiDockNodeSettings* ImGuiDockNodeSettings_ImGuiDockNodeSettings();
+    void ImGuiDockNodeSettings_destroy(ImGuiDockNodeSettings* self);
     ImGuiDockNode* ImGuiDockNode_ImGuiDockNode(ImGuiID id);
     bool ImGuiDockNode_IsCentralNode(ImGuiDockNode* self);
     bool ImGuiDockNode_IsDockSpace(ImGuiDockNode* self);
@@ -4309,6 +4358,10 @@ extern (C) @nogc nothrow {
     void ImGuiDockNode_SetLocalFlags(ImGuiDockNode* self, ImGuiDockNodeFlags flags);
     void ImGuiDockNode_UpdateMergedFlags(ImGuiDockNode* self);
     void ImGuiDockNode_destroy(ImGuiDockNode* self);
+    ImGuiDockPreviewData* ImGuiDockPreviewData_ImGuiDockPreviewData();
+    void ImGuiDockPreviewData_destroy(ImGuiDockPreviewData* self);
+    ImGuiDockRequest* ImGuiDockRequest_ImGuiDockRequest();
+    void ImGuiDockRequest_destroy(ImGuiDockRequest* self);
     ImGuiErrorRecoveryState* ImGuiErrorRecoveryState_ImGuiErrorRecoveryState();
     void ImGuiErrorRecoveryState_destroy(ImGuiErrorRecoveryState* self);
     ImGuiIDStackTool* ImGuiIDStackTool_ImGuiIDStackTool();
