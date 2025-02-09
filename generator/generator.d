@@ -61,6 +61,7 @@ shared static this()
         "signed char*": "byte*",
         "signed short*": "short*",
         "signed int*": "int*",
+        "signed   long long": "long",
         "int64_t" : "long",
         "signed __int64" : "long",
         "unsigned __int64" : "ulong",
@@ -83,8 +84,10 @@ shared static this()
         "const ImGuiPayload*" : "const(ImGuiPayload)*",
         "const ImGuiPlatformMonitor*" : "const(ImGuiPlatformMonitor)*",
         "const ImGuiDataTypeInfo*" : "const(ImGuiDataTypeInfo)*",
+        "const ImGuiDataVarInfo*" : "const(ImGuiDataVarInfo)*",
+        "const ImFontBuilderIO*" : "const(ImFontBuilderIO)*",
         "int(__cdecl*)(void const*,void const*)" : "int function(const(void*), const(void*))",
-        "ImBitArray<ImGuiKey_NamedKey_COUNT,-ImGuiKey_NamedKey_BEGIN>" : "ImBitArray!(ImGuiKey.NamedKey_COUNT,-ImGuiKey.NamedKey_BEGIN)"
+        "ImBitArray<ImGuiKey_NamedKey_COUNT, -ImGuiKey_NamedKey_BEGIN>" : "ImBitArray!(ImGuiKey.NamedKey_COUNT,-ImGuiKey.NamedKey_BEGIN)"
     ];
 
     //alias ImBitArrayForNamedKeys = ImBitArray(ImGuiKey.NamedKey_COUNT,-ImGuiKey.NamedKey_BEGIN); ImBitArray<ImGuiKey_NamedKey_COUNT,-ImGuiKey_NamedKey_BEGIN>;
@@ -832,7 +835,7 @@ void write_typedefs(code_writer codeWriter, JSONValue typedefs, JSONValue struct
 {
     foreach (string typedefName, JSONValue typeDefValue; typedefs) 
     {
-        const string originalTypeName = imgui_type_to_dlang(typeDefValue.str);
+        string originalTypeName = imgui_type_to_dlang(typeDefValue.str);
 
         if (typedefName in structs_and_enums["enums"] ||
             (typedefName ~ "_") in structs_and_enums["enums"])
@@ -841,10 +844,17 @@ void write_typedefs(code_writer codeWriter, JSONValue typedefs, JSONValue struct
         if (originalTypeName == "T") continue;
         if (typedefName == "iterator") continue;
         if (typedefName == "const_iterator") continue;
+        if (originalTypeName.startsWith("typedef "))
+            originalTypeName = originalTypeName.replace("typedef ", "");
+
+        // Hack to forward declare the struct instead of trying to alias it.
+        if (originalTypeName == "ImStb::STB_TexteditState")
+            originalTypeName = typedefName;
 
         if (originalTypeName != typedefName)
         {
-            string aliasStr = format("alias %s = %s", typedefName,originalTypeName);
+            string aliasStr = format("alias %s = %s", typedefName, originalTypeName);
+            codeWriter.write_indent();
             codeWriter.put_string(aliasStr);
 
             // Sometimes we get a function with a semicolon. so we only sometimes need to write a semicolon.

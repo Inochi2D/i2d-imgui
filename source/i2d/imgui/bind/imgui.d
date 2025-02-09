@@ -10,41 +10,41 @@ import core.stdc.string;
 
 extern (C) {
     struct ImGuiDockRequest;
-alias ImS16 = short;
-alias ImU32 = uint;
-alias ImGuiSizeCallback = void     function(ImGuiSizeCallbackData* data);
-alias ImGuiContextHookCallback = typedef void  function(ImGuiContext* ctx, ImGuiContextHook* hook);
-alias ImS8 = byte;
-alias ImU64 = ulong;
-alias ImWchar = ImWchar16;
-alias ImGuiID = uint;
-alias ImGuiTableDrawChannelIdx = ImU16;
-alias ImGuiInputTextCallback = int      function(ImGuiInputTextCallbackData* data);
-alias ImDrawIdx = ushort;
-alias ImPoolIdx = int;
-alias ImDrawCallback = typedef void  function(const ImDrawList* parent_list, const ImDrawCmd* cmd);
+    alias ImS16 = short;
+    alias ImU32 = uint;
+    alias ImGuiSizeCallback = void     function(ImGuiSizeCallbackData* data);
+    alias ImGuiContextHookCallback = void  function(ImGuiContext* ctx, ImGuiContextHook* hook);
+    alias ImS8 = byte;
+    alias ImU64 = ulong;
+    alias ImWchar = ImWchar16;
+    alias ImGuiID = uint;
+    alias ImGuiTableDrawChannelIdx = ImU16;
+    alias ImGuiInputTextCallback = int      function(ImGuiInputTextCallbackData* data);
+    alias ImDrawIdx = ushort;
+    alias ImPoolIdx = int;
+    alias ImDrawCallback = void  function(const ImDrawList* parent_list, const ImDrawCmd* cmd);
     struct ImGuiDockNodeSettings;
-alias ImS32 = int;
-alias ImGuiKeyChord = int;
-alias ImGuiMemFreeFunc = void     function(void* ptr, void* user_data);
-alias ImGuiSelectionUserData = ImS64;
+    alias ImS32 = int;
+    alias ImGuiKeyChord = int;
+    alias ImGuiMemFreeFunc = void     function(void* ptr, void* user_data);
+    alias ImGuiSelectionUserData = ImS64;
     struct ImGuiTableColumnsSettings;
     struct STB_TexteditState;
-alias ImU16 = ushort;
-alias ImWchar16 = ushort;
-alias ImWchar32 = uint;
-alias ImS64 = signed   long long;
-alias ImFileHandle = FILE*;
-alias ImU8 = char;
-alias ImGuiKeyRoutingIndex = ImS16;
-alias ImGuiTableColumnIdx = ImS16;
-alias ImTextureID = ImU64;
+    alias ImU16 = ushort;
+    alias ImWchar16 = ushort;
+    alias ImWchar32 = uint;
+    alias ImS64 = long;
+    alias ImFileHandle = FILE*;
+    alias ImU8 = char;
+    alias ImGuiKeyRoutingIndex = ImS16;
+    alias ImGuiTableColumnIdx = ImS16;
+    alias ImTextureID = ImU64;
     struct ImGuiInputTextDeactivateData;
-alias ImStbTexteditState = ImStb::STB_TexteditState;
-alias ImGuiErrorCallback = void  function(ImGuiContext* ctx, void* user_data, const(char)* msg);
-alias ImBitArrayForNamedKeys = ImBitArray<ImGuiKey_NamedKey_COUNT, -ImGuiKey_NamedKey_BEGIN>;
-alias ImBitArrayPtr = ImU32*;
-alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
+    struct ImStbTexteditState;
+    alias ImGuiErrorCallback = void  function(ImGuiContext* ctx, void* user_data, const(char)* msg);
+    alias ImBitArrayForNamedKeys = ImBitArray!(ImGuiKey.NamedKey_COUNT,-ImGuiKey.NamedKey_BEGIN);
+    alias ImBitArrayPtr = ImU32*;
+    alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
     
     struct ImVector(tType) {
         int Size;
@@ -2585,7 +2585,7 @@ alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
         ImVector!(ImFontConfig) ConfigData; /// Configuration data
         ImVec4[(32)+1] TexUvLines; /// UVs for baked anti-aliased lines
              /// [Internal] Font builder
-        const ImFontBuilderIO* FontBuilderIO; /// Opaque interface to a font builder (default to stb_truetype, can be changed to use FreeType by defining IMGUI_ENABLE_FREETYPE).
+        const(ImFontBuilderIO)* FontBuilderIO; /// Opaque interface to a font builder (default to stb_truetype, can be changed to use FreeType by defining IMGUI_ENABLE_FREETYPE).
         uint FontBuilderFlags; /// Shared flags (for all fonts) for custom font builder. THIS IS BUILD IMPLEMENTATION DEPENDENT. Per-font override is also available in ImFontConfig.
              /// [Internal] Packing data
         int PackIdMouseCursors; /// Custom texture rectangle ID for white pixel and mouse cursors
@@ -5083,7 +5083,7 @@ extern (C) @nogc nothrow {
     const(char)* igGetStyleColorName(ImGuiCol idx);
     /// retrieve style color as stored in ImGuiStyle structure. use to feed back into PushStyleColor(), otherwise use GetColorU32() to get style color with style alpha baked in.
     const(ImVec4)* igGetStyleColorVec4(ImGuiCol idx);
-    const ImGuiDataVarInfo* igGetStyleVarInfo(ImGuiStyleVar idx);
+    const(ImGuiDataVarInfo)* igGetStyleVarInfo(ImGuiStyleVar idx);
     /// ~ FontSize
     float igGetTextLineHeight();
     /// ~ FontSize + style.ItemSpacing.y (distance in pixels between 2 consecutive lines of text)
@@ -5161,7 +5161,7 @@ extern (C) @nogc nothrow {
     void igImFontAtlasBuildRender32bppRectFromString(ImFontAtlas* atlas, int x, int y, int w, int h, const(char)* in_str, char in_marker_char, uint in_marker_pixel_value);
     void igImFontAtlasBuildRender8bppRectFromString(ImFontAtlas* atlas, int x, int y, int w, int h, const(char)* in_str, char in_marker_char, char in_marker_pixel_value);
     void igImFontAtlasBuildSetupFont(ImFontAtlas* atlas, ImFont* font, ImFontConfig* font_config, float ascent, float descent);
-    const ImFontBuilderIO* igImFontAtlasGetBuilderForStbTruetype();
+    const(ImFontBuilderIO)* igImFontAtlasGetBuilderForStbTruetype();
     void igImFontAtlasUpdateConfigDataPointers(ImFontAtlas* atlas);
     int igImFormatString(char* buf, size_t buf_size, const(char)* fmt, ...);
     void igImFormatStringToTempBuffer(const char** out_buf, const char** out_buf_end, const(char)* fmt, ...);
