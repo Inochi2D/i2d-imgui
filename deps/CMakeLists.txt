@@ -13,7 +13,7 @@ message(STATUS "submodulePrefixPath: ${submodulePrefixPath}")
 set(CMAKE_DEBUG_POSTFIX "")
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
-option(BUILD_SHARED_LIBS "Build shared instead of static libraries." ON)
+option(BUILD_SHARED_LIBS "Build shared instead of static libraries." OFF)
 
 set(PlatformArchitecture ${CMAKE_SYSTEM_PROCESSOR})
 
@@ -71,41 +71,9 @@ if (MSVC)
     endif()
 endif()
 
-# Libraries are built for Mac/Windows, and consumed via the Package Manager for Linux
-if (NOT UNIX OR APPLE OR DEFINED USE_SUBMODULE_SOURCES) # Windows and Mac
-    add_subdirectory(${freetype_SUBMOD_DIR})
-    set_target_properties(freetype PROPERTIES DEBUG_POSTFIX "")
-    set_target_properties(freetype PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${OutputDirectory})
-    set_target_properties(freetype PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${OutputDirectory})
-    set_target_properties(freetype PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${OutputDirectory})
-    set_target_properties(freetype PROPERTIES ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${OutputDirectory})
-    set_target_properties(freetype PROPERTIES LIBRARY_OUTPUT_DIRECTORY_RELEASE ${OutputDirectory})
-    set_target_properties(freetype PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE ${OutputDirectory})
-    set(IMGUI_FREETYPE "yes" CACHE STRING "Build with freetype library")
-    set(IMGUI_FREETYPE_IN_TREE "yes" CACHE STRING "freetype library is being build in-tree")
-
-    add_subdirectory(${SDL_SUBMOD_DIR})
-    set_target_properties(SDL2 PROPERTIES DEBUG_POSTFIX "")
-    set_target_properties(SDL2 PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${OutputDirectory})
-    set_target_properties(SDL2 PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${OutputDirectory})
-    set_target_properties(SDL2 PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${OutputDirectory})
-    set_target_properties(SDL2 PROPERTIES ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${OutputDirectory})
-    set_target_properties(SDL2 PROPERTIES LIBRARY_OUTPUT_DIRECTORY_RELEASE ${OutputDirectory})
-    set_target_properties(SDL2 PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE ${OutputDirectory})
-    set(IMGUI_SDL_IN_TREE "yes" CACHE STRING "SDL library is built in-tree")
-else() # Linux
-    include(FindFreetype)
-    #find_package(freetype MODULE REQUIRED)
-    set(IMGUI_FREETYPE "yes" CACHE STRING "Build with freetype library")
-    set(IMGUI_FREETYPE_IN_TREE "no" CACHE STRING "freetype library is being build in-tree")
-
-    find_package(SDL2 REQUIRED)
-    set(IMGUI_SDL_IN_TREE "no" CACHE STRING "SDL library is built in-tree")
-endif()
-
 option(BUILD_SHARED_LIBS "Build shared instead of static libraries." OFF)
-set(IMGUI_SDL "yes" CACHE STRING "Build with SDL")
-set(IMGUI_OPENGL3 "yes" CACHE STRING "Build with OpenGL3")
+set(IMGUI_SDL "no" CACHE STRING "Build with SDL")
+set(IMGUI_OPENGL3 "no" CACHE STRING "Build with OpenGL3")
 add_subdirectory(${cimgui_SUBMOD_DIR})
 
 set_target_properties(cimgui PROPERTIES DEBUG_POSTFIX "")
