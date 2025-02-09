@@ -1,11 +1,11 @@
 // This is essentially a straight port of the ImGui OpenGL3 backend, removing most code that optimized for version for non-3_3.
 // Certainly willing to revisit adding that code back in the future. It's just slimmed down for the Inochi needs for right now.
 
-module bindbc.imgui.ogl;
+module i2d.imgui.ogl;
 
 import core.stdc.stdio;
 
-import bindbc.imgui.bind.imgui,
+import i2d.imgui.bind.imgui,
        bindbc.opengl;
 
 // OpenGL Data

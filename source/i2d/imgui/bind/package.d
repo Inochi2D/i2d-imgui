@@ -1,3 +1,3 @@
-module bindbc.imgui.bind;
+module i2d.imgui.bind;
 
-public import bindbc.imgui.bind.imgui;
+public import i2d.imgui.bind.imgui;

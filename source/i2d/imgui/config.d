@@ -1,4 +1,4 @@
-module bindbc.imgui.config;
+module i2d.imgui.config;
 
 
 enum ImGuiSupport {
