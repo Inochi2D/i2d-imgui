@@ -894,10 +894,15 @@ void write_enums(code_writer codeWriter, JSONValue definitions)
 
             gConvertedEnumValue[value["name"].str] = adjustedEnumTypeName ~ "." ~ valueName;
 
+            string comment = "";
+            
+            if ("comment" in value)
+                comment = " " ~ value["comment"].str().replace("// ", "/// ");
+
             if (enumBaseType.length == 0)
-                codeWriter.put_lines(format("%s = %d,\n", valueName, value["calc_value"].integer));
+                codeWriter.put_lines(format("%s = %d,%s\n", valueName, value["calc_value"].integer, comment));
             else
-                codeWriter.put_lines(format("%s = cast(%s)%d,\n", valueName, enumBaseType, value["calc_value"].integer));
+                codeWriter.put_lines(format("%s = cast(%s)%d,%s\n", valueName, enumBaseType, value["calc_value"].integer, comment));
             gEnumType[adjustedEnumTypeName].values[to!string(value["calc_value"].integer)] = valueName; // should cache the first gEnumType[adjustedEnumTypeName] call, but don't know how to take it by ref.
         }
 
@@ -934,7 +939,23 @@ void write_structs(code_writer codeWriter, JSONValue definitions)
 
             }
 
-            codeWriter.put_lines(format("%s %s;", typeName, objectName));
+            string above_comment = "";
+            string sameline_comment = "";
+            
+            if ("comment" in value) {
+                JSONValue comment = value["comment"];
+                if ("above" in comment) {
+                    above_comment = " " ~ comment["above"].str().replace("// ", "/// ");
+                }
+                if ("sameline" in comment) {
+                    sameline_comment = " " ~ comment["sameline"].str().replace("// ", "/// ");
+                }
+            }
+
+            if (above_comment.length != 0)
+                codeWriter.put_lines(above_comment);
+
+            codeWriter.put_lines(format("%s %s;%s", typeName, objectName, sameline_comment));
         }
 
         codeWriter.remove_scope();
@@ -1134,6 +1155,9 @@ function_overload_info write_function(code_writer codeWriter, string functionNam
 
     if ("templated" in cimguiFunction && cimguiFunction["templated"].boolean)
         return info;
+        
+    if ("comment" in cimguiFunction)
+        codeWriter.put_lines(cimguiFunction["comment"].str().replace("// ", "/// "));
 
     codeWriter.write_indent();
 
@@ -1243,9 +1267,27 @@ function_overload_info[] write_functions(code_writer codeWriter, JSONValue defin
     string[] imFunctionPtrTypes;
     function_overload_info[] infos;
 
+    struct imgui_functions
+    {
+        string functionName;
+        JSONValue functionDecl;
+    }
+    imgui_functions[] functions;
+
     codeWriter.add_extern_c();
+    
     foreach (string functionName, JSONValue functionDecl; definitions)
     {
+        ++functions.length;
+        functions[functions.length - 1].functionName = functionName;
+        functions[functions.length - 1].functionDecl = functionDecl;
+    }
+    sort!((a,b){return a.functionName < b.functionName;})(functions);
+
+    foreach (imgui_functions func; functions)
+    {
+        string functionName = func.functionName;
+        JSONValue functionDecl = func.functionDecl;
         if (functionName == "ImVector_ImVector")
             continue;
 
@@ -1359,7 +1401,7 @@ void write_imgui_file(
 {
     auto codeWriter = code_writer();
 
-    codeWriter.put_lines("module bindbc.imgui.bind.imgui;");
+    codeWriter.put_lines("module i2d.imgui.bind.imgui;");
     codeWriter.line_break();
     codeWriter.put_lines("import std.algorithm;");
     codeWriter.line_break();
@@ -1383,21 +1425,21 @@ void write_imgui_file(
     codeWriter.remove_scope();
 
     // Writing out the static version of the symbols
-    codeWriter.add_version("BindImGui_Static");
+    //codeWriter.add_version("BindImGui_Static");
 
     auto infos = write_functions(codeWriter, definitions, false);
-    infos ~= write_backend_functions(codeWriter, impl_definitions, false);
+    //infos ~= write_backend_functions(codeWriter, impl_definitions, false);
 
     // NOTE: For some reason we merge this scope and following else into one line, hence why we're not using remove_scope here.    
-    codeWriter.remove_indent();
-    codeWriter.put_string("} ");
+    //codeWriter.remove_indent();
+    //codeWriter.put_string("} ");
 
     // Writing out the Dynamic version of the symbols
-    codeWriter.add_else();
-
-    write_functions(codeWriter, definitions, true);
-    write_backend_functions(codeWriter, impl_definitions, true);
-    codeWriter.remove_scope();
+    //codeWriter.add_else();
+    //
+    //write_functions(codeWriter, definitions, true);
+    //write_backend_functions(codeWriter, impl_definitions, true);
+    //codeWriter.remove_scope();
 
     codeWriter.put_lines(cCFunctionWrapper);
 
@@ -1418,7 +1460,7 @@ void write_imgui_file(
         codeWriter.put_string("\n");
     }
 
-    std.file.write("source/bindbc/imgui/bind/imgui.d", codeWriter.mBuilder.data);
+    std.file.write("source/i2d/imgui/bind/imgui.d", codeWriter.mBuilder.data);
 }
 
 void write_loader(
@@ -1433,14 +1475,14 @@ void write_loader(
     write_function_loading(codeWriter, definitions);
 
     codeWriter.line_break();
-    codeWriter.put_lines("// Backends");
+    //codeWriter.put_lines("// Backends");
 
-    write_backend_function_loading(codeWriter, impl_definitions);
+    //write_backend_function_loading(codeWriter, impl_definitions);
 
     codeWriter.remove_indent();
     codeWriter.put_lines(loaderEnd);
     
-    std.file.write("source/bindbc/imgui/dynload.d", codeWriter.mBuilder.data);
+    std.file.write("source/i2d/imgui/dynload.d", codeWriter.mBuilder.data);
 }
 
 void main()
@@ -1450,7 +1492,7 @@ void main()
     JSONValue definitions = parseJSON(std.file.readText("./deps/cimgui/generator/output/definitions.json"));
     JSONValue impl_definitions = parseJSON(std.file.readText("./deps/cimgui/generator/output/impl_definitions.json"));
 
-    write_loader(definitions, impl_definitions);
+    //write_loader(definitions, impl_definitions);
     write_imgui_file(typedefs_dict, structs_and_enums, definitions, impl_definitions);
 
     //JSONValue definitions = parseJSON(std.file.readText("./cimgui/generator/output/definitions.json"));

@@ -21,26 +21,14 @@ configuration "static_dynamicCRT" {
         "cmake -G \"Visual Studio 17 2022\" -Ax64 -DSTATIC_CIMGUI= -S deps -B deps/build_windows_x64_cimguiStatic_DynamicCRT" \
         "cmake --build deps/build_windows_x64_cimguiStatic_DynamicCRT --config Release"  platform="windows-x86_64"
 
-    libs \
-        "$PACKAGE_DIR/libs/AMD64/win32/Static/DynamicCRT/cimgui" \
-        "$PACKAGE_DIR/libs/AMD64/win32/Static/DynamicCRT/SDL2"   \
-        "$PACKAGE_DIR/libs/AMD64/win32/Static/DynamicCRT/freetype" platform="windows-x86_64"
+    libs "$PACKAGE_DIR/libs/AMD64/win32/Static/DynamicCRT/cimgui" platform="windows-x86_64"
 
-    copyFiles "libs/AMD64/win32/Static/DynamicCRT/SDL2.dll" platform="windows-x86_64"
-    copyFiles "libs/AMD64/win32/Static/DynamicCRT/freetype.dll" platform="windows-x86_64"
-    
     // Windows x86
     preBuildCommands \
         "cmake -G \"Visual Studio 17 2022\" -AWin32 -DSTATIC_CIMGUI= -S deps -B deps/build_windows_x86_cimguiStatic_DynamicCRT" \
         "cmake --build deps/build_windows_x86_cimguiStatic_DynamicCRT --config Release" platform="windows-x86"
 
-    libs \
-        "$PACKAGE_DIR/libs/x86/win32/Static/DynamicCRT/cimgui" \
-        "$PACKAGE_DIR/libs/x86/win32/Static/DynamicCRT/SDL2"   \
-        "$PACKAGE_DIR/libs/x86/win32/Static/DynamicCRT/freetype" platform="windows-x86"
-    
-    copyFiles "libs/x86/win32/Static/DynamicCRT/SDL2.dll" platform="windows-x86"
-    copyFiles "libs/x86/win32/Static/DynamicCRT/freetype.dll" platform="windows-x86"
+    libs "$PACKAGE_DIR/libs/x86/win32/Static/DynamicCRT/cimgui" platform="windows-x86"
     
     // Linux x86_64
     preBuildCommands \
@@ -48,7 +36,7 @@ configuration "static_dynamicCRT" {
         "cmake --build deps/build_linux_x64_cimguiStatic --config Release" platform="linux-x86_64"
 
     sourceFiles "$PACKAGE_DIR/libs/x86_64/linux/Static/cimgui.a" platform="linux-x86_64"
-    libs "sdl2" "freetype" ":libstdc++.so" platform="linux-x86_64"
+    libs ":libstdc++.so" platform="linux-x86_64"
 
     // Linux aarch64
     preBuildCommands \
@@ -56,7 +44,7 @@ configuration "static_dynamicCRT" {
         "cmake --build deps/build_linux_aarch64_cimguiStatic --config Release" platform="linux-aarch64"
 
     sourceFiles "$PACKAGE_DIR/libs/aarch64/linux/Static/cimgui.a" platform="linux-aarch64"
-    libs "sdl2" "freetype" ":libstdc++.so" platform="linux-aarch64"
+    libs ":libstdc++.so" platform="linux-aarch64"
 }
 
 configuration "static_staticCRT" {
@@ -71,26 +59,14 @@ configuration "static_staticCRT" {
         "cmake -G \"Visual Studio 17 2022\" -Ax64 -DSTATIC_CIMGUI= -DWINDOWS_STATIC_CRT= .. -S deps -B deps/build_windows_x64_cimguiStatic_StaticCRT" \
         "cmake --build deps/build_windows_x64_cimguiStatic_StaticCRT --config Release" platform="windows-x86_64"
 
-    libs \
-        "$PACKAGE_DIR/libs/AMD64/win32/Static/StaticCRT/cimgui" \
-        "$PACKAGE_DIR/libs/AMD64/win32/Static/StaticCRT/SDL2"   \
-        "$PACKAGE_DIR/libs/AMD64/win32/Static/StaticCRT/freetype" platform="windows-x86_64"
-
-    copyFiles "libs/AMD64/win32/Static/StaticCRT/SDL2.dll" platform="windows-x86_64"
-    copyFiles "libs/AMD64/win32/Static/StaticCRT/freetype.dll" platform="windows-x86_64"
+    libs "$PACKAGE_DIR/libs/AMD64/win32/Static/StaticCRT/cimgui" platform="windows-x86_64"
 
     // Windows x86
     preBuildCommands \
         "cmake -G \"Visual Studio 17 2022\" -AWin32 -DSTATIC_CIMGUI= -DWINDOWS_STATIC_CRT= -S deps -B deps/build_windows_x86_cimguiStatic_StaticCRT" \
         "cmake --build deps/build_windows_x86_cimguiStatic_StaticCRT --config Release" platform="windows-x86"
 
-    libs \
-        "$PACKAGE_DIR/libs/x86/win32/Static/StaticCRT/cimgui" \
-        "$PACKAGE_DIR/libs/x86/win32/Static/StaticCRT/SDL2"   \
-        "$PACKAGE_DIR/libs/x86/win32/Static/StaticCRT/freetype" platform="windows-x86"
-    
-    copyFiles "libs/x86/win32/Static/StaticCRT/SDL2.dll" platform="windows-x86"
-    copyFiles "libs/x86/win32/Static/StaticCRT/freetype.dll" platform="windows-x86"
+    libs "$PACKAGE_DIR/libs/x86/win32/Static/StaticCRT/cimgui" platform="windows-x86"
 
     // Linux x86_64
     preBuildCommands \
@@ -98,7 +74,7 @@ configuration "static_staticCRT" {
         "cmake --build deps/build_linux_x64_cimguiStatic --config Release" platform="linux-x86_64"
 
     sourceFiles "$PACKAGE_DIR/libs/x86_64/linux/Static/cimgui.a" platform="linux-x86_64"
-    libs "sdl2" "freetype" ":libstdc++.a" platform="linux-x86_64"
+    libs ":libstdc++.a" platform="linux-x86_64"
 
     // Linux aarch64
     preBuildCommands \
@@ -106,7 +82,7 @@ configuration "static_staticCRT" {
         "cmake --build deps/build_linux_aarch64_cimguiStatic --config Release" platform="linux-aarch64"
 
     sourceFiles "$PACKAGE_DIR/libs/aarch64/linux/Static/cimgui.a" platform="linux-aarch64"
-    libs "sdl2" "freetype" ":libstdc++.a" platform="linux-aarch64"
+    libs ":libstdc++.a" platform="linux-aarch64"
 }
 
 configuration "dynamic_dynamicCRT" {
@@ -120,28 +96,18 @@ configuration "dynamic_dynamicCRT" {
         "cmake -G \"Visual Studio 17 2022\" -Ax64 -S deps -B deps/build_windows_x64_cimguiDynamic_DynamicCRT" \
         "cmake --build deps/build_windows_x64_cimguiDynamic_DynamicCRT --config Release" platform="windows-x86_64"
 
-    libs \
-        "$PACKAGE_DIR/libs/AMD64/win32/Dynamic/DynamicCRT/cimgui" \
-        "$PACKAGE_DIR/libs/AMD64/win32/Dynamic/DynamicCRT/SDL2" \
-        "$PACKAGE_DIR/libs/AMD64/win32/Dynamic/DynamicCRT/freetype" platform="windows-x86_64"
+    libs "$PACKAGE_DIR/libs/AMD64/win32/Dynamic/DynamicCRT/cimgui" platform="windows-x86_64"
 
     copyFiles "libs/AMD64/win32/Dynamic/DynamicCRT/cimgui.dll" platform="windows-x86_64"
-    copyFiles "libs/AMD64/win32/Dynamic/DynamicCRT/SDL2.dll" platform="windows-x86_64"
-    copyFiles "libs/AMD64/win32/Dynamic/DynamicCRT/freetype.dll" platform="windows-x86_64"
 
     // Windows x86
     preBuildCommands \
         "cmake -G \"Visual Studio 17 2022\" -AWin32 -S deps -B deps/build_windows_x86_cimguiDynamic_DynamicCRT" \
         "cmake --build deps/build_windows_x86_cimguiDynamic_DynamicCRT --config Release" platform="windows-x86"
 
-    libs \
-        "$PACKAGE_DIR/libs/x86/win32/Dynamic/DynamicCRT/cimgui" \
-        "$PACKAGE_DIR/libs/x86/win32/Dynamic/DynamicCRT/SDL2" \
-        "$PACKAGE_DIR/libs/x86/win32/Dynamic/DynamicCRT/freetype" platform="windows-x86"
+    libs "$PACKAGE_DIR/libs/x86/win32/Dynamic/DynamicCRT/cimgui" platform="windows-x86"
 
     copyFiles "libs/x86/win32/Dynamic/DynamicCRT/cimgui.dll" platform="windows-x86"
-    copyFiles "libs/x86/win32/Dynamic/DynamicCRT/SDL2.dll" platform="windows-x86"
-    copyFiles "libs/x86/win32/Dynamic/DynamicCRT/freetype.dll" platform="windows-x86"
 
     // macOS
     preBuildCommands \
@@ -178,28 +144,18 @@ configuration "dynamic_staticCRT" {
         "cmake -G \"Visual Studio 17 2022\" -Ax64 -DWINDOWS_STATIC_CRT= -S deps -B deps/build_windows_x64_cimguiDynamic_StaticCRT" \
         "cmake --build deps/build_windows_x64_cimguiDynamic_StaticCRT --config Release" platform="windows-x86_64"
 
-    libs \
-        "$PACKAGE_DIR/libs/AMD64/win32/Dynamic/StaticCRT/cimgui" \
-        "$PACKAGE_DIR/libs/AMD64/win32/Dynamic/StaticCRT/SDL2" \
-        "$PACKAGE_DIR/libs/AMD64/win32/Dynamic/StaticCRT/freetype" platform="windows-x86_64"
+    libs "$PACKAGE_DIR/libs/AMD64/win32/Dynamic/StaticCRT/cimgui" platform="windows-x86_64"
 
     copyFiles "libs/AMD64/win32/Dynamic/StaticCRT/cimgui.dll" platform="windows-x86_64"
-    copyFiles "libs/AMD64/win32/Dynamic/StaticCRT/SDL2.dll" platform="windows-x86_64"
-    copyFiles "libs/AMD64/win32/Dynamic/StaticCRT/freetype.dll" platform="windows-x86_64"
 
     // Windows x86
     preBuildCommands \
         "cmake -G \"Visual Studio 17 2022\" -AWin32 -DWINDOWS_STATIC_CRT= -S deps -B deps/build_windows_x86_cimguiDynamic_StaticCRT" \
         "cmake --build deps/build_windows_x86_cimguiDynamic_StaticCRT --config Release" platform="windows-x86"
 
-    libs \
-        "$PACKAGE_DIR/libs/x86/win32/Dynamic/StaticCRT/cimgui" \
-        "$PACKAGE_DIR/libs/x86/win32/Dynamic/StaticCRT/SDL2" \
-        "$PACKAGE_DIR/libs/x86/win32/Dynamic/StaticCRT/freetype" platform="windows-x86"
+    libs "$PACKAGE_DIR/libs/x86/win32/Dynamic/StaticCRT/cimgui" platform="windows-x86"
 
     copyFiles "libs/x86/win32/Dynamic/StaticCRT/cimgui.dll" platform="windows-x86"
-    copyFiles "libs/x86/win32/Dynamic/StaticCRT/SDL2.dll" platform="windows-x86"
-    copyFiles "libs/x86/win32/Dynamic/StaticCRT/freetype.dll" platform="windows-x86"
 
     // macOS
     preBuildCommands \
