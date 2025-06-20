@@ -74,6 +74,10 @@ endif()
 option(BUILD_SHARED_LIBS "Build shared instead of static libraries." OFF)
 set(IMGUI_SDL "no" CACHE STRING "Build with SDL")
 set(IMGUI_OPENGL3 "no" CACHE STRING "Build with OpenGL3")
+set(IMGUI_FREETYPE "no" CACHE STRING "Build with freetype library")
+set(IMGUI_WCHAR32 ON)
+
+
 add_subdirectory(${cimgui_SUBMOD_DIR})
 
 set_target_properties(cimgui PROPERTIES DEBUG_POSTFIX "")

@@ -75,19 +75,27 @@ shared static this()
         "ImGuiWindowPtr" : "ImGuiWindow*",
         "ImFontPtr" : "ImFont*",
         "ImDrawListPtr" : "ImDrawList*",
+        "ImTextureDataPtr" : "ImTextureData*",
+        "ImDrawListSharedDataPtr" : "ImDrawListSharedData*",
+        "ImFontAtlasPtr" : "ImFontAtlas*",
+        "ImFontConfigPtr" : "ImFontConfig*",
         "ImGuiViewportPPtr" : "ImGuiViewportP*",
         "ImGuiViewportPtr" : "ImGuiViewport*",
         "const_charPtr" : "const(char)*",
         "const ImWchar*" : "const(ImWchar)*",
         "const ImVec4*" : "const(ImVec4)*",
+        "const ImGuiStyleVarInfo*" : "const(ImGuiStyleVarInfo)*",
+        "const unsigned char*" : "const(char)*",
         "const ImFontGlyph*" : "const(ImFontGlyph)*",
         "const ImGuiPayload*" : "const(ImGuiPayload)*",
         "const ImGuiPlatformMonitor*" : "const(ImGuiPlatformMonitor)*",
+        "const ImFontLoader*" : "const(ImFontLoader)*",
         "const ImGuiDataTypeInfo*" : "const(ImGuiDataTypeInfo)*",
         "const ImGuiDataVarInfo*" : "const(ImGuiDataVarInfo)*",
         "const ImFontBuilderIO*" : "const(ImFontBuilderIO)*",
         "int(__cdecl*)(void const*,void const*)" : "int function(const(void*), const(void*))",
-        "ImBitArray<ImGuiKey_NamedKey_COUNT, -ImGuiKey_NamedKey_BEGIN>" : "ImBitArray!(ImGuiKey.NamedKey_COUNT,-ImGuiKey.NamedKey_BEGIN)"
+        "ImBitArray<ImGuiKey_NamedKey_COUNT, -ImGuiKey_NamedKey_BEGIN>" : "ImBitArray!(ImGuiKey.NamedKey_COUNT,-ImGuiKey.NamedKey_BEGIN)",
+        "ImFontBaked__32": "ImFontBaked, 32",
     ];
 
     //alias ImBitArrayForNamedKeys = ImBitArray(ImGuiKey.NamedKey_COUNT,-ImGuiKey.NamedKey_BEGIN); ImBitArray<ImGuiKey_NamedKey_COUNT,-ImGuiKey_NamedKey_BEGIN>;
@@ -179,6 +187,8 @@ string imgui_type_to_dlang(string imguiType)
         imguiType = handle_dang_template("ImSpan", imguiType);
     else if (startsWith(imguiType, "ImBitArray_"))
         imguiType = handle_dang_template("ImBitArray", imguiType);
+    else if (startsWith(imguiType, "ImStableVector_"))
+        imguiType = handle_dang_template("ImStableVector", imguiType);
     
     if (canFind(imguiType, "(*)"))
     {
@@ -345,9 +355,14 @@ struct code_writer
     int indent = 0;
 }
 
-
-
-
+string neededStructs = `
+alias stbrp_coord = int;
+struct stbrp_node
+{
+   stbrp_coord  x,y;
+   stbrp_node  *next;
+};
+`;
 
 string loaderPrelude = `
 module bindbc.imgui.dynload;
@@ -432,7 +447,6 @@ struct TypeToReplace {
     ImPoolIdx FreeIdx;
 }
 };
-
 
 const string imSpan = q{
 struct ImSpan(tType) {
@@ -586,6 +600,17 @@ struct ImVector(tType) {
     tType* Data;
 
     import core.stdc.string;
+
+    // Important: never called automatically! always explicit.
+    void clear_destruct()
+    { 
+        for (int n = 0; n < Size; n++) 
+        {
+            destroy(Data[n]);
+        }
+
+        clear(); 
+    }
 
 
     bool empty() const                       
@@ -762,6 +787,134 @@ struct ImVector(tType) {
 }
 };
 
+
+
+const string imStableVector = q{
+size_t imMemAlign(size_t size, size_t alignment)
+{
+    return (size + alignment - 1) & ~(alignment - 1);
+}
+
+struct ImStableVector(tType, size_t BLOCK_SIZE) {
+    int Size;
+    int Capacity;
+    ImVector!(tType*) Blocks;
+
+    ~this()
+    {
+        for (int n = 0; n < Capacity; n++)
+        {
+            igMemFree(Blocks[n]);
+        }
+    }
+
+    // Call Clear instead.
+    void clear_delete() 
+    { 
+        for (int n = 0; n < Blocks.Size; n++) {
+            destroy(Blocks.Data[n]); 
+            igMemFree(Blocks.Data[n]);
+        }
+            
+        Blocks.clear();
+    }
+
+    void clear()
+    {
+        Size = 0;
+        Capacity = 0;
+        clear_delete();
+    }
+
+    void resize(int new_size)
+    { 
+        if (new_size > Capacity) 
+        {
+            reserve(cast(int)new_size); 
+            Size = new_size; 
+        }
+    }
+
+    void reserve(int new_cap)
+    {
+        new_cap = cast(int)imMemAlign(new_cap, cast(size_t)BLOCK_SIZE);
+        int old_count = cast(int)(Capacity / BLOCK_SIZE);
+        int new_count = cast(int)(new_cap / BLOCK_SIZE);
+        if (new_count <= old_count)
+        {
+            return;
+        }
+
+        Blocks.resize(new_count);
+        for (int n = old_count; n < new_count; n++)
+        {
+            Blocks[n] = cast(tType*)igMemAlloc(tType.sizeof * BLOCK_SIZE);
+        }
+        Capacity = new_cap;
+    }
+    
+    ref auto opIndex(size_t index)
+    {
+        return Blocks[index / BLOCK_SIZE][index % BLOCK_SIZE];
+    }
+
+    ref auto push_back(const(tType) v) 
+    {
+        int i = Size;
+        assert(i >= 0);
+        if (Size == Capacity)
+        {
+            reserve(cast(int)(Capacity + BLOCK_SIZE));
+        }  
+        
+        void* ptr = &Blocks[i / BLOCK_SIZE][i % BLOCK_SIZE]; 
+        memcpy(ptr, &v, v.sizeof); 
+        Size++; 
+        return cast(tType*)ptr;        
+    }
+}
+};
+
+
+//inline T&           operator[](int i)           { IM_ASSERT(i >= 0 && i < Size); return Blocks[i / BLOCK_SIZE][i % BLOCK_SIZE]; }
+//inline const T&     operator[](int i) const     { IM_ASSERT(i >= 0 && i < Size); return Blocks[i / BLOCK_SIZE][i % BLOCK_SIZE]; }
+//inline T*           push_back(const T& v)       { int i = Size; IM_ASSERT(i >= 0); if (Size == Capacity) reserve(Capacity + BLOCK_SIZE); void* ptr = &Blocks[i / BLOCK_SIZE][i % BLOCK_SIZE]; memcpy(ptr, &v, sizeof(v)); Size++; return (T*)ptr; }
+
+
+
+
+
+//template<typename T, int BLOCK_SIZE>
+//struct ImStableVector
+//{
+//    int                 Size = 0;
+//    int                 Capacity = 0;
+//    ImVector<T*>        Blocks;
+//
+//    // Functions
+//    inline ~ImStableVector()                        { for (T* block : Blocks) IM_FREE(block); }
+//
+//    inline void         clear()                     { Size = Capacity = 0; Blocks.clear_delete(); }
+//    inline void         resize(int new_size)        { if (new_size > Capacity) reserve(new_size); Size = new_size; }
+//    inline void         reserve(int new_cap)
+//    {
+//        new_cap = IM_MEMALIGN(new_cap, BLOCK_SIZE);
+//        int old_count = Capacity / BLOCK_SIZE;
+//        int new_count = new_cap / BLOCK_SIZE;
+//        if (new_count <= old_count)
+//            return;
+//        Blocks.resize(new_count);
+//        for (int n = old_count; n < new_count; n++)
+//            Blocks[n] = (T*)IM_ALLOC(sizeof(T) * BLOCK_SIZE);
+//        Capacity = new_cap;
+//    }
+//    inline T&           operator[](int i)           { IM_ASSERT(i >= 0 && i < Size); return Blocks[i / BLOCK_SIZE][i % BLOCK_SIZE]; }
+//    inline const T&     operator[](int i) const     { IM_ASSERT(i >= 0 && i < Size); return Blocks[i / BLOCK_SIZE][i % BLOCK_SIZE]; }
+//    inline T*           push_back(const T& v)       { int i = Size; IM_ASSERT(i >= 0); if (Size == Capacity) reserve(Capacity + BLOCK_SIZE); void* ptr = &Blocks[i / BLOCK_SIZE][i % BLOCK_SIZE]; memcpy(ptr, &v, sizeof(v)); Size++; return (T*)ptr; }
+//};
+
+
+
 const string imChunkStream = q{
 struct TypeToReplace {
     TemplatedTypeToReplace Buf;
@@ -813,6 +966,7 @@ string[string] write_template_structs(code_writer codeWriter, JSONValue definiti
         }
     }
 
+    codeWriter.put_lines(imStableVector);
     codeWriter.put_lines(imVector);
     codeWriter.put_lines(imSpan);
     codeWriter.put_lines(imBitArray);
@@ -822,7 +976,8 @@ string[string] write_template_structs(code_writer codeWriter, JSONValue definiti
         string structTemplate;
         if (startsWith(templateName, "ImVector_") 
             || startsWith(templateName, "ImSpan_")
-            || startsWith(templateName, "ImBitArray_"))
+            || startsWith(templateName, "ImBitArray_")
+            || startsWith(templateName, "ImStableVector_"))
             continue; // We utlize a D template for these. (ImPool and ImChunkStream to follow).
         else if (startsWith(templateName, "ImPool_"))
             structTemplate = imPool;
@@ -854,6 +1009,9 @@ void write_typedefs(code_writer codeWriter, JSONValue typedefs, JSONValue struct
         // Hack to forward declare the struct instead of trying to alias it.
         if (originalTypeName == "ImStb::STB_TexteditState")
             originalTypeName = typedefName;
+
+        if (typedefName == "stbrp_node")
+            continue;
 
         if (originalTypeName != typedefName)
         {
@@ -930,10 +1088,10 @@ void write_enums(code_writer codeWriter, JSONValue definitions)
     }
 }
 
-void write_structs(code_writer codeWriter, JSONValue definitions)
+void write_structs(code_writer codeWriter, JSONValue struct_definitions, JSONValue function_definitions)
 {
-    auto struct_comments = definitions["struct_comments"];
-    auto structs = definitions["structs"];
+    auto struct_comments = struct_definitions["struct_comments"];
+    auto structs = struct_definitions["structs"];
     foreach (string structName, JSONValue structMembers; structs) 
     {
         if (structName in struct_comments) {
@@ -941,6 +1099,17 @@ void write_structs(code_writer codeWriter, JSONValue definitions)
         }
 
         codeWriter.add_struct(structName);
+        bool hasDestructor = false;
+        string destructor_name = structName ~ "_destroy";
+        
+        foreach (string functionName, JSONValue functionDecl; function_definitions)
+        {
+            if (functionName == destructor_name) 
+            {
+                hasDestructor =  true;
+                break;
+            }
+        }
 
         foreach (JSONValue value; structMembers.array)
         {
@@ -980,6 +1149,15 @@ void write_structs(code_writer codeWriter, JSONValue definitions)
                 codeWriter.put_lines(above_comment);
 
             codeWriter.put_lines(format("%s %s;%s", typeName, objectName, sameline_comment));
+        }
+
+        if (hasDestructor)
+        {
+            codeWriter.put_lines("~this()\n");
+            codeWriter.write_indent();
+            codeWriter.add_scope();
+            codeWriter.put_lines(destructor_name ~ "(&this);");
+            codeWriter.remove_scope();
         }
 
         codeWriter.remove_scope();
@@ -1286,16 +1464,17 @@ function_overload_info write_function(code_writer codeWriter, string functionNam
 }
 
 
+struct imgui_functions
+{
+    string functionName;
+    JSONValue functionDecl;
+}
+
 function_overload_info[] write_functions(code_writer codeWriter, JSONValue definitions, bool writeFunctionGlobals)
 {
     string[] imFunctionPtrTypes;
     function_overload_info[] infos;
 
-    struct imgui_functions
-    {
-        string functionName;
-        JSONValue functionDecl;
-    }
     imgui_functions[] functions;
 
     codeWriter.add_extern_c();
@@ -1438,12 +1617,14 @@ void write_imgui_file(
 
     codeWriter.add_normal_extern_c();
 
+    codeWriter.put_lines(neededStructs);    
+
     write_typedefs(codeWriter, typedefs_dict, structs_and_enums);
     auto tempalteStructInfo = write_template_structs(codeWriter, structs_and_enums);
     codeWriter.line_break();
     write_enums(codeWriter, structs_and_enums);
     codeWriter.line_break();
-    write_structs(codeWriter, structs_and_enums);
+    write_structs(codeWriter, structs_and_enums, definitions);
     codeWriter.line_break();
 
     codeWriter.remove_scope();
