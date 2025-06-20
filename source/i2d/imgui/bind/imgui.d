@@ -2,6 +2,8 @@ module i2d.imgui.bind.imgui;
 
 import std.algorithm;
 
+import std.traits;
+
 import core.stdc.stdio;
 
 import core.stdc.stdarg;
@@ -71,22 +73,11 @@ extern (C) {
             }
         }
     
-        // Call Clear instead.
-        void clear_delete() 
-        { 
-            for (int n = 0; n < Blocks.Size; n++) {
-                destroy(Blocks.Data[n]); 
-                igMemFree(Blocks.Data[n]);
-            }
-                
-            Blocks.clear();
-        }
-    
         void clear()
         {
             Size = 0;
             Capacity = 0;
-            clear_delete();
+            Blocks.clear_delete();
         }
     
         void resize(int new_size)
@@ -145,6 +136,17 @@ extern (C) {
         import core.stdc.string;
     
         // Important: never called automatically! always explicit.
+        void clear_delete()() if (isPointer!(tType))
+        { 
+            for (int n = 0; n < Size; n++) {
+                destroy(Data[n]); 
+                igMemFree(cast(void*)Data[n]);
+            }
+                
+            clear();
+        }
+    
+        // Important: never called automatically! always explicit.
         void clear_destruct()
         { 
             for (int n = 0; n < Size; n++) 
@@ -154,7 +156,6 @@ extern (C) {
     
             clear(); 
         }
-    
     
         bool empty() const                       
         {

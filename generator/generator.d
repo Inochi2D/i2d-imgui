@@ -602,6 +602,17 @@ struct ImVector(tType) {
     import core.stdc.string;
 
     // Important: never called automatically! always explicit.
+    void clear_delete()() if (isPointer!(tType))
+    { 
+        for (int n = 0; n < Size; n++) {
+            destroy(Data[n]); 
+            igMemFree(cast(void*)Data[n]);
+        }
+            
+        clear();
+    }
+
+    // Important: never called automatically! always explicit.
     void clear_destruct()
     { 
         for (int n = 0; n < Size; n++) 
@@ -611,7 +622,6 @@ struct ImVector(tType) {
 
         clear(); 
     }
-
 
     bool empty() const                       
     {
@@ -808,22 +818,11 @@ struct ImStableVector(tType, size_t BLOCK_SIZE) {
         }
     }
 
-    // Call Clear instead.
-    void clear_delete() 
-    { 
-        for (int n = 0; n < Blocks.Size; n++) {
-            destroy(Blocks.Data[n]); 
-            igMemFree(Blocks.Data[n]);
-        }
-            
-        Blocks.clear();
-    }
-
     void clear()
     {
         Size = 0;
         Capacity = 0;
-        clear_delete();
+        Blocks.clear_delete();
     }
 
     void resize(int new_size)
@@ -1607,6 +1606,8 @@ void write_imgui_file(
     codeWriter.put_lines("module i2d.imgui.bind.imgui;");
     codeWriter.line_break();
     codeWriter.put_lines("import std.algorithm;");
+    codeWriter.line_break();
+    codeWriter.put_lines("import std.traits;");
     codeWriter.line_break();
     codeWriter.put_lines("import core.stdc.stdio;");
     codeWriter.line_break();
