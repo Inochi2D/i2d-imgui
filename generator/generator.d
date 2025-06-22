@@ -1110,26 +1110,17 @@ void write_structs(code_writer codeWriter, JSONValue struct_definitions, JSONVal
             }
         }
 
+        bool hasBitfield = false;
+        size_t bitfieldNumber = 0;
+        size_t accumulatedBits = 0;
+        string bitfield_typeName = "";
+        string bitfield_objectName = "";
+        string bitfield_above_comment = "";
+
         foreach (JSONValue value; structMembers.array)
         {
             string typeName = imgui_type_to_dlang(value["type"].str);
             string objectName = value["name"].str;
-
-            if ((0 != objectName.length) && (']' == objectName[objectName.length - 1]))
-            {
-                ptrdiff_t position = std.string.lastIndexOf(objectName, '[');
-
-                string sizeExpression = objectName[position + 1 .. objectName.length - 1]; 
-                if (sizeExpression in gConvertedEnumValue)
-                    sizeExpression = gConvertedEnumValue[sizeExpression];
-
-                typeName = typeName ~ "[" ~ sizeExpression ~ "]";
-                objectName = objectName[0 .. position];
-            }
-            else
-            {
-
-            }
 
             string above_comment = "";
             string sameline_comment = "";
@@ -1142,6 +1133,65 @@ void write_structs(code_writer codeWriter, JSONValue struct_definitions, JSONVal
                 if ("sameline" in comment) {
                     sameline_comment = " " ~ comment["sameline"].str().replace("// ", "/// ");
                 }
+            }
+
+            if (("bitfield" in value) && ((bitfield_typeName == typeName) || (bitfield_typeName.length == 0)))
+            {
+                size_t bitsOfField = to!int(value["bitfield"].str);
+
+                if (!hasBitfield) 
+                {
+                    bitfield_typeName = typeName;
+                    bitfield_objectName = format("bitfield_%s", bitfieldNumber);
+                    bitfield_above_comment = "// This is a bitfield, we cannot replicate this in the D binding.";
+                    
+                    if (above_comment.length != 0)
+                        bitfield_above_comment ~= "\n" ~ above_comment;
+
+                    bitfield_above_comment ~= format("\n//%s %s : %d;%s", typeName, objectName, bitsOfField, sameline_comment);
+                    hasBitfield = true;
+                    ++bitfieldNumber;
+                }
+                else
+                {
+                    if (above_comment.length != 0)
+                        bitfield_above_comment ~= "\n" ~ above_comment;
+
+                    bitfield_above_comment ~= format("\n//%s %s : %d;%s", typeName, objectName, bitsOfField, sameline_comment);
+                }
+                accumulatedBits += bitsOfField;
+                writeln(structName ~ " has a bitfield that takes " ~ to!string(bitsOfField) ~ " bits!");
+                continue;
+            }
+            // If the current field is no longer a bitfield, then we can finally emit the accumulated field.
+            else if (hasBitfield)
+            {
+                writeln(structName ~ " has an accumulated field that takes " ~ to!string(accumulatedBits) ~ " bits!");
+                hasBitfield = false;
+                accumulatedBits = 0;
+
+                if (bitfield_above_comment.length != 0)
+                    codeWriter.put_lines(bitfield_above_comment);
+
+                codeWriter.put_lines(format("%s %s;", bitfield_typeName, bitfield_objectName));
+
+                codeWriter.put_lines(format("static assert((%s.sizeof * 8) >= %d.sizeof);\n", bitfield_typeName, accumulatedBits));
+                
+                bitfield_typeName = "";
+                bitfield_objectName = "";
+                bitfield_above_comment = "";
+            }
+                
+            if ((0 != objectName.length) && (']' == objectName[objectName.length - 1]))
+            {
+                ptrdiff_t position = std.string.lastIndexOf(objectName, '[');
+
+                string sizeExpression = objectName[position + 1 .. objectName.length - 1]; 
+                if (sizeExpression in gConvertedEnumValue)
+                    sizeExpression = gConvertedEnumValue[sizeExpression];
+
+                typeName = typeName ~ "[" ~ sizeExpression ~ "]";
+                objectName = objectName[0 .. position];
             }
 
             if (above_comment.length != 0)

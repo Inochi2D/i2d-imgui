@@ -1917,7 +1917,10 @@ extern (C) {
         ImGuiID ID;
         ImS8 QueryFrameCount; /// >= 1: Query in progress
         bool QuerySuccess; /// Obtained result from DebugHookIdInfo()
-        ImGuiDataType DataType;
+        // This is a bitfield, we cannot replicate this in the D binding.
+        //ImGuiDataType DataType : 8;
+        ImGuiDataType bitfield_0;
+        static assert((ImGuiDataType.sizeof * 8) >= 0.sizeof);
         char[57] Desc; /// Arbitrarily sized buffer to hold a result (FIXME: could replace Results[] with a chunk stream?) FIXME: Now that we added CTRL+C this should be fixed.
     }
 
@@ -2055,10 +2058,13 @@ extern (C) {
         ImS8 HiddenFramesCannotSkipItems; /// Hide the window for N frames while allowing items to be submitted so we can measure their size
         ImS8 HiddenFramesForRenderOnly; /// Hide the window until frame N at Render() time only
         ImS8 DisableInputsFrames; /// Disable window interactions for N frames
-        ImGuiCond SetWindowPosAllowFlags; /// store acceptable condition flags for SetNextWindowPos() use.
-        ImGuiCond SetWindowSizeAllowFlags; /// store acceptable condition flags for SetNextWindowSize() use.
-        ImGuiCond SetWindowCollapsedAllowFlags; /// store acceptable condition flags for SetNextWindowCollapsed() use.
-        ImGuiCond SetWindowDockAllowFlags; /// store acceptable condition flags for SetNextWindowDock() use.
+        // This is a bitfield, we cannot replicate this in the D binding.
+        //ImGuiCond SetWindowPosAllowFlags : 8; /// store acceptable condition flags for SetNextWindowPos() use.
+        //ImGuiCond SetWindowSizeAllowFlags : 8; /// store acceptable condition flags for SetNextWindowSize() use.
+        //ImGuiCond SetWindowCollapsedAllowFlags : 8; /// store acceptable condition flags for SetNextWindowCollapsed() use.
+        //ImGuiCond SetWindowDockAllowFlags : 8; /// store acceptable condition flags for SetNextWindowDock() use.
+        ImGuiCond bitfield_0;
+        static assert((ImGuiCond.sizeof * 8) >= 0.sizeof);
         ImVec2 SetWindowPosVal; /// store window position when using a non-zero Pivot (position set needs to be processed when we know the window size)
         ImVec2 SetWindowPosPivot; /// store window pivot for positioning. ImVec2(0, 0) when positioning from top-left corner; ImVec2(0.5f, 0.5f) for centering; ImVec2(1, 1) for bottom right.
         ImVector!(ImGuiID) IDStack; /// ID stack. ID are hashes seeded with the value at the top of the stack. (In theory this should be in the TempData structure)
@@ -2102,11 +2108,14 @@ extern (C) {
         int MemoryDrawListIdxCapacity; /// Backup of last idx/vtx count, so when waking up the window we can preallocate and avoid iterative alloc/copy
         int MemoryDrawListVtxCapacity;
         bool MemoryCompacted; /// Set when window extraneous data have been garbage collected
+        // This is a bitfield, we cannot replicate this in the D binding.
              /// Docking
-        bool DockIsActive; /// When docking artifacts are actually visible. When this is set, DockNode is guaranteed to be != NULL. ~~ (DockNode != NULL) && (DockNode->Windows.Size > 1).
-        bool DockNodeIsVisible;
-        bool DockTabIsVisible; /// Is our window visible this frame? ~~ is the corresponding tab selected?
-        bool DockTabWantClose;
+        //bool DockIsActive : 1; /// When docking artifacts are actually visible. When this is set, DockNode is guaranteed to be != NULL. ~~ (DockNode != NULL) && (DockNode->Windows.Size > 1).
+        //bool DockNodeIsVisible : 1;
+        //bool DockTabIsVisible : 1; /// Is our window visible this frame? ~~ is the corresponding tab selected?
+        //bool DockTabWantClose : 1;
+        bool bitfield_1;
+        static assert((bool.sizeof * 8) >= 0.sizeof);
         short DockOrder; /// Order of the last time the window was visible within its DockNode. This is used to reorder windows that are reappearing on the same frame. Same value between windows that were active and windows that were none are possible.
         ImGuiWindowDockStyle DockStyle;
         ImGuiDockNode* DockNode; /// Which node are we docked into. Important: Prefer testing DockIsActive in many cases as this will still be set when the dock node is hidden.
@@ -2182,8 +2191,11 @@ extern (C) {
         float RowCellPaddingY; /// Top and bottom padding. Reloaded during row change.
         float RowTextBaseline;
         float RowIndentOffsetX;
-        ImGuiTableRowFlags RowFlags; /// Current row flags, see ImGuiTableRowFlags_
-        ImGuiTableRowFlags LastRowFlags;
+        // This is a bitfield, we cannot replicate this in the D binding.
+        //ImGuiTableRowFlags RowFlags : 16; /// Current row flags, see ImGuiTableRowFlags_
+        //ImGuiTableRowFlags LastRowFlags : 16;
+        ImGuiTableRowFlags bitfield_0;
+        static assert((ImGuiTableRowFlags.sizeof * 8) >= 0.sizeof);
         int RowBgColorCounter; /// Counter for alternating background colors (can be fast-forwarded by e.g clipper), not same as CurrentRow because header rows typically don't increase this.
         ImU32[2] RowBgColor; /// Background color override for current row.
         ImU32 BorderColorStrong;
@@ -2352,10 +2364,13 @@ extern (C) {
     /// Hold rendering data for one glyph.
     /// (Note: some language parsers may fail to convert the bitfield members, in this case maybe drop store a single u32 or we can rework this)
     struct ImFontGlyph {
-        uint Colored; /// Flag to indicate glyph is colored and should generally ignore tinting (make it usable with no shift on little-endian as this is used in loops)
-        uint Visible; /// Flag to indicate glyph has no visible pixels (e.g. space). Allow early out when rendering.
-        uint SourceIdx; /// Index of source in parent font
-        uint Codepoint; /// 0x0000..0x10FFFF
+        // This is a bitfield, we cannot replicate this in the D binding.
+        //uint Colored : 1; /// Flag to indicate glyph is colored and should generally ignore tinting (make it usable with no shift on little-endian as this is used in loops)
+        //uint Visible : 1; /// Flag to indicate glyph has no visible pixels (e.g. space). Allow early out when rendering.
+        //uint SourceIdx : 4; /// Index of source in parent font
+        //uint Codepoint : 26; /// 0x0000..0x10FFFF
+        uint bitfield_0;
+        static assert((uint.sizeof * 8) >= 0.sizeof);
         float AdvanceX; /// Horizontal distance to advance cursor/layout position.
         float X0; /// Glyph corners. Offsets from current cursor/layout position.
         float Y0; /// Glyph corners. Offsets from current cursor/layout position.
@@ -2384,9 +2399,11 @@ extern (C) {
     }
 
     struct ImGuiStyleVarInfo {
-        ImU32 Count; /// 1+
+        // This is a bitfield, we cannot replicate this in the D binding.
+        //ImU32 Count : 8; /// 1+
+        ImU32 bitfield_0;
+        static assert((ImU32.sizeof * 8) >= 0.sizeof);
         ImGuiDataType DataType;
-        ImU32 Offset; /// Offset in parent structure
     }
 
         /// [Internal]
@@ -2528,9 +2545,11 @@ extern (C) {
         ImGuiTableColumnIdx Index;
         ImGuiTableColumnIdx DisplayOrder;
         ImGuiTableColumnIdx SortOrder;
-        ImU8 SortDirection;
+        // This is a bitfield, we cannot replicate this in the D binding.
+        //ImU8 SortDirection : 2;
+        ImU8 bitfield_0;
+        static assert((ImU8.sizeof * 8) >= 0.sizeof);
         ImS8 IsEnabled; /// "Visible" in ini file
-        ImU8 IsStretch;
     }
 
     /// Helper: Growable text buffer for logging/accumulating text
@@ -2925,9 +2944,12 @@ extern (C) {
         float Ascent; /// 4+4   /// out /// Ascent: distance from top to bottom of e.g. 'A' [0..FontSize] (unscaled)
              /// [Internal] Members: Cold
         float Descent; /// 4+4   /// out /// Ascent: distance from top to bottom of e.g. 'A' [0..FontSize] (unscaled)
-        uint MetricsTotalSurface; /// 3  /// out /// Total surface in pixels to get an idea of the font rasterization/texture cost (not exact, we approximate the cost of padding between glyphs)
-        uint WantDestroy; /// 0  ///     /// Queued for destroy
-        uint LockLoadingFallback; /// 0  ///     //
+        // This is a bitfield, we cannot replicate this in the D binding.
+        //uint MetricsTotalSurface : 26; /// 3  /// out /// Total surface in pixels to get an idea of the font rasterization/texture cost (not exact, we approximate the cost of padding between glyphs)
+        //uint WantDestroy : 1; /// 0  ///     /// Queued for destroy
+        //uint LockLoadingFallback : 1; /// 0  ///     //
+        uint bitfield_0;
+        static assert((uint.sizeof * 8) >= 0.sizeof);
         int LastUsedFrame; /// 4     ///     /// Record of that time this was bounds
         ImGuiID BakedId; /// 4     //
         ImFont* ContainerFont; /// 4-8   /// in  /// Parent font
@@ -3487,7 +3509,10 @@ extern (C) {
         bool IsStartedFromVoid; /// Starting click was not from an item.
         bool IsStartedSetNavIdOnce;
         bool RequestClear;
-        ImGuiKeyChord KeyMods; /// Latched key-mods for box-select logic.
+        // This is a bitfield, we cannot replicate this in the D binding.
+        //ImGuiKeyChord KeyMods : 16; /// Latched key-mods for box-select logic.
+        ImGuiKeyChord bitfield_0;
+        static assert((ImGuiKeyChord.sizeof * 8) >= 0.sizeof);
         ImVec2 StartPosRel; /// Start position in window-contents relative space (to support scrolling)
         ImVec2 EndPosRel; /// End position in window-contents relative space
         ImVec2 ScrollAccum; /// Scrolling accumulator (to behave at high-frame spaces)
@@ -3529,20 +3554,13 @@ extern (C) {
         ImGuiID SelectedTabId; /// [Leaf node only] Which of our tab/window is selected.
         ImGuiID WantCloseTabId; /// [Leaf node only] Set when closing a specific tab/window.
         ImGuiID RefViewportId; /// Reference viewport ID from visible window when HostWindow == NULL.
-        ImGuiDataAuthority AuthorityForPos;
-        ImGuiDataAuthority AuthorityForSize;
-        ImGuiDataAuthority AuthorityForViewport;
+        // This is a bitfield, we cannot replicate this in the D binding.
+        //ImGuiDataAuthority AuthorityForPos : 3;
+        //ImGuiDataAuthority AuthorityForSize : 3;
+        //ImGuiDataAuthority AuthorityForViewport : 3;
+        ImGuiDataAuthority bitfield_0;
+        static assert((ImGuiDataAuthority.sizeof * 8) >= 0.sizeof);
         bool IsVisible; /// Set to false when the node is hidden (usually disabled as it has no active window)
-        bool IsFocused;
-        bool IsBgDrawnThisFrame;
-        bool HasCloseButton; /// Provide space for a close button (if any of the docked window has one). Note that button may be hidden on window without one.
-        bool HasWindowMenuButton;
-        bool HasCentralNodeChild;
-        bool WantCloseAll; /// Set when closing all tabs at once.
-        bool WantLockSizeOnce;
-        bool WantMouseMove; /// After a node extraction we need to transition toward moving the newly created host window
-        bool WantHiddenTabBarUpdate;
-        bool WantHiddenTabBarToggle;
     }
 
     /// Helper: Key->Value storage
@@ -3968,7 +3986,10 @@ extern (C) {
         bool ActiveIdHasBeenEditedBefore; /// Was the value associated to the widget Edited over the course of the Active state.
         bool ActiveIdHasBeenEditedThisFrame;
         bool ActiveIdFromShortcut;
-        int ActiveIdMouseButton;
+        // This is a bitfield, we cannot replicate this in the D binding.
+        //int ActiveIdMouseButton : 8;
+        int bitfield_0;
+        static assert((int.sizeof * 8) >= 0.sizeof);
         ImVec2 ActiveIdClickOffset; /// Clicked offset from upper-left corner, if applicable (currently only set by ButtonBehavior)
         ImGuiWindow* ActiveIdWindow;
         ImGuiInputSource ActiveIdSource; /// Activating source: ImGuiInputSource_Mouse OR ImGuiInputSource_Keyboard OR ImGuiInputSource_Gamepad
@@ -4293,9 +4314,12 @@ extern (C) {
         ImS8 NavLayerCurrent; /// ImGuiNavLayer in 1 byte
         ImU8 AutoFitQueue; /// Queue of 8 values for the next 8 frames to request auto-fit
         ImU8 CannotSkipItemsQueue; /// Queue of 8 values for the next 8 frames to disable Clipped/SkipItem
-        ImU8 SortDirection; /// ImGuiSortDirection_Ascending or ImGuiSortDirection_Descending
-        ImU8 SortDirectionsAvailCount; /// Number of available sort directions (0 to 3)
-        ImU8 SortDirectionsAvailMask; /// Mask of available sort directions (1-bit each)
+        // This is a bitfield, we cannot replicate this in the D binding.
+        //ImU8 SortDirection : 2; /// ImGuiSortDirection_Ascending or ImGuiSortDirection_Descending
+        //ImU8 SortDirectionsAvailCount : 2; /// Number of available sort directions (0 to 3)
+        //ImU8 SortDirectionsAvailMask : 4; /// Mask of available sort directions (1-bit each)
+        ImU8 bitfield_0;
+        static assert((ImU8.sizeof * 8) >= 0.sizeof);
         ImU8 SortDirectionsAvailList; /// Ordered list of available sort directions (2-bits each, total 8-bits)
     }
 
@@ -4315,8 +4339,11 @@ extern (C) {
     /// RectsIndex[] is used both as an index into Rects[] and an index into itself. This is basically a free-list. See ImFontAtlasBuildAllocRectIndexEntry() code.
     /// Having this also makes it easier to e.g. sort rectangles during repack.
     struct ImFontAtlasRectEntry {
-        int TargetIndex; /// When Used: ImFontAtlasRectId -> into Rects[]. When unused: index to next unused RectsIndex[] slot to consume free-list.
-        int Generation; /// Increased each time the entry is reused for a new rectangle.
+        // This is a bitfield, we cannot replicate this in the D binding.
+        //int TargetIndex : 20; /// When Used: ImFontAtlasRectId -> into Rects[]. When unused: index to next unused RectsIndex[] slot to consume free-list.
+        //int Generation : 10; /// Increased each time the entry is reused for a new rectangle.
+        int bitfield_0;
+        static assert((int.sizeof * 8) >= 0.sizeof);
         uint IsUsed;
     }
 
