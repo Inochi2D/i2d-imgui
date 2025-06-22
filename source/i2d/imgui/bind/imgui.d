@@ -1919,10 +1919,6 @@ extern (C) {
         bool QuerySuccess; /// Obtained result from DebugHookIdInfo()
         ImGuiDataType DataType;
         char[57] Desc; /// Arbitrarily sized buffer to hold a result (FIXME: could replace Results[] with a chunk stream?) FIXME: Now that we added CTRL+C this should be fixed.
-        ~this()
-        {
-            ImGuiStackLevelInfo_destroy(&this);
-        }
     }
 
     /// Data saved for each window pushed into the stack
@@ -1942,10 +1938,6 @@ extern (C) {
         ImU8 RoutingNextScore; /// Lower is better (0: perfect score)
         ImGuiID RoutingCurr;
         ImGuiID RoutingNext;
-        ~this()
-        {
-            ImGuiKeyRoutingData_destroy(&this);
-        }
     }
 
     /// Transient data that are only needed between BeginTable() and EndTable(), those buffers are shared (1 per level of stacked table).
@@ -1968,10 +1960,6 @@ extern (C) {
         ImVec1 HostBackupColumnsOffset; /// Backup of OuterWindow->DC.ColumnsOffset at the end of BeginTable()
         float HostBackupItemWidth; /// Backup of OuterWindow->DC.ItemWidth at the end of BeginTable()
         int HostBackupItemWidthStackSize; //Backup of OuterWindow->DC.ItemWidthStack.Size at the end of BeginTable()
-        ~this()
-        {
-            ImGuiTableTempData_destroy(&this);
-        }
     }
 
     /// Type information associated to one ImGuiDataType. Retrieve with DataTypeGetInfo().
@@ -1992,10 +1980,6 @@ extern (C) {
         ImGuiID OpenParentId; /// Set on OpenPopup(), we need this to differentiate multiple menu sets from each others (e.g. inside menu bar vs loose menu items)
         ImVec2 OpenPopupPos; /// Set on OpenPopup(), preferred popup position (typically == OpenMousePos when using mouse)
         ImVec2 OpenMousePos; /// Set on OpenPopup(), copy of mouse position at the time of opening popup
-        ~this()
-        {
-            ImGuiPopupData_destroy(&this);
-        }
     }
 
     /// Storage for one window
@@ -2128,10 +2112,6 @@ extern (C) {
         ImGuiDockNode* DockNode; /// Which node are we docked into. Important: Prefer testing DockIsActive in many cases as this will still be set when the dock node is hidden.
         ImGuiDockNode* DockNodeAsHost; /// Which node are we owning (for parent windows)
         ImGuiID DockId; /// Backup of last valid DockNode->ID, so single window remember their dock node id even when they are not bound any more
-        ~this()
-        {
-            ImGuiWindow_destroy(&this);
-        }
     }
 
     /// Routing table: maintain a desired owner for each possible key-chord (key + mods), and setup owner in NewFrame() when mods are matching.
@@ -2140,10 +2120,6 @@ extern (C) {
         ImGuiKeyRoutingIndex[ImGuiKey.NamedKey_COUNT] Index; /// Index of first entry in Entries[]
         ImVector!(ImGuiKeyRoutingData) Entries;
         ImVector!(ImGuiKeyRoutingData) EntriesNext; /// Double-buffer to avoid reallocation (could use a shared buffer)
-        ~this()
-        {
-            ImGuiKeyRoutingTable_destroy(&this);
-        }
     }
 
     /// sizeof() = 20
@@ -2159,10 +2135,6 @@ extern (C) {
         short SizeOfItemFlagsStack;
         short SizeOfBeginPopupStack;
         short SizeOfDisabledStack;
-        ~this()
-        {
-            ImGuiErrorRecoveryState_destroy(&this);
-        }
     }
 
     struct ImGuiOldColumnData {
@@ -2170,10 +2142,6 @@ extern (C) {
         float OffsetNormBeforeResize;
         ImGuiOldColumnFlags Flags; /// Not exposed
         ImRect ClipRect;
-        ~this()
-        {
-            ImGuiOldColumnData_destroy(&this);
-        }
     }
 
     struct ImGuiDockRequest {
@@ -2186,10 +2154,6 @@ extern (C) {
         bool DockSplitOuter;
         ImGuiWindow* UndockTargetWindow;
         ImGuiDockNode* UndockTargetNode;
-        ~this()
-        {
-            ImGuiDockRequest_destroy(&this);
-        }
     }
 
     /// sizeof() ~ 592 bytes + heap allocs described in TableBeginInitMemory()
@@ -2307,10 +2271,6 @@ extern (C) {
         bool HasScrollbarYPrev; /// Whether ANY instance of this table had a vertical scrollbar during the previous.
         bool MemoryCompacted;
         bool HostSkipItems; /// Backup of InnerWindow->SkipItem at the end of BeginTable(), because we will overwrite InnerWindow->SkipItem on a per-column basis
-        ~this()
-        {
-            ImGuiTable_destroy(&this);
-        }
     }
 
     /// Output of ImFontAtlas::GetCustomRect() when using custom rectangles.
@@ -2323,10 +2283,6 @@ extern (C) {
         ushort h; /// Size
         ImVec2 uv0; /// UV coordinates (in current texture)
         ImVec2 uv1; /// UV coordinates (in current texture)
-        ~this()
-        {
-            ImFontAtlasRect_destroy(&this);
-        }
     }
 
     /// Transient per-window data, reset at the beginning of the frame. This used to be called ImGuiDrawContext, hence the DC variable name in ImGuiWindow.
@@ -2391,10 +2347,6 @@ extern (C) {
             /// Members
         void* UserData; /// User data for use by adapter function                                /// e.g. selection.UserData = (void*)my_items;
         void function(ImGuiSelectionExternalStorage* self,int idx,bool selected) AdapterSetItemSelected; /// e.g. AdapterSetItemSelected = [](ImGuiSelectionExternalStorage* self, int idx, bool selected)  ((MyItems**)self->UserData)[idx]->Selected = selected; 
-        ~this()
-        {
-            ImGuiSelectionExternalStorage_destroy(&this);
-        }
     }
 
     /// Hold rendering data for one glyph.
@@ -2414,10 +2366,6 @@ extern (C) {
         float U1; /// Texture coordinates for the current value of ImFontAtlas->TexRef. Cached equivalent of calling GetCustomRect() with PackId.
         float V1; /// Texture coordinates for the current value of ImFontAtlas->TexRef. Cached equivalent of calling GetCustomRect() with PackId.
         int PackId; /// [Internal] ImFontAtlasRectId value (FIXME: Cold data, could be moved elsewhere?)
-        ~this()
-        {
-            ImFontGlyph_destroy(&this);
-        }
     }
 
     struct ImGuiNextItemData {
@@ -2433,10 +2381,6 @@ extern (C) {
         ImU8 OpenCond; /// Set by SetNextItemOpen()
         ImGuiDataTypeStorage RefVal; /// Not exposed yet, for ImGuiInputTextFlags_ParseEmptyAsRefVal
         ImGuiID StorageId; /// Set by SetNextItemStorageID()
-        ~this()
-        {
-            ImGuiNextItemData_destroy(&this);
-        }
     }
 
     struct ImGuiStyleVarInfo {
@@ -2449,10 +2393,6 @@ extern (C) {
     struct ImGuiTextRange {
         const(char)* b;
         const(char)* e;
-        ~this()
-        {
-            ImGuiTextRange_destroy(&this);
-        }
     }
 
     /// Returned by GetTypingSelectRequest(), designed to eventually be public.
@@ -2468,10 +2408,6 @@ extern (C) {
     struct ImDrawDataBuilder {
         ImVector!(ImDrawList*)*[2] Layers; /// Pointers to global layers for: regular, tooltip. LayersP[0] is owned by DrawData.
         ImVector!(ImDrawList*) LayerData1;
-        ~this()
-        {
-            ImDrawDataBuilder_destroy(&this);
-        }
     }
 
     struct ImGuiInputEventMouseWheel {
@@ -2499,10 +2435,6 @@ extern (C) {
         ImS8 NavIdSelected; /// -1 (don't have) or true/false
         ImGuiSelectionUserData RangeSrcItem; //
         ImGuiSelectionUserData NavIdItem; /// SetNextItemSelectionUserData() value for NavId (if part of submitted items)
-        ~this()
-        {
-            ImGuiMultiSelectState_destroy(&this);
-        }
     }
 
     /// Note that Max is exclusive, so perhaps should be using a Begin/End convention.
@@ -2536,10 +2468,6 @@ extern (C) {
         ImU8[(0x10FFFF+1)/8192/8] Used8kPagesMap; /// 1 bytes if ImWchar=ImWchar16, 16 bytes if ImWchar==ImWchar32. Store 1-bit for each block of 4K codepoints that has one active glyph. This is mainly used to facilitate iterations across all used codepoints.
         bool EllipsisAutoBake; /// 1     ///     /// Mark when the "..." glyph needs to be generated.
         ImGuiStorage RemapPairs; /// 16    ///     /// Remapping pairs when using AddRemapChar(), otherwise empty.
-        ~this()
-        {
-            ImFont_destroy(&this);
-        }
     }
 
     /// ImVec4: 4D vector used to store clipping rectangles, colors etc. [Compile-time configurable type]
@@ -2548,10 +2476,6 @@ extern (C) {
         float y;
         float z;
         float w;
-        ~this()
-        {
-            ImVec4_destroy(&this);
-        }
     }
 
     struct stbrp_context_opaque {
@@ -2563,10 +2487,6 @@ extern (C) {
         ImVector!(ImGuiDockRequest) Requests;
         ImVector!(ImGuiDockNodeSettings) NodesSettings;
         bool WantFullRebuild;
-        ~this()
-        {
-            ImGuiDockContext_destroy(&this);
-        }
     }
 
     struct ImGuiSettingsHandler {
@@ -2579,10 +2499,6 @@ extern (C) {
         void function(ImGuiContext* ctx,ImGuiSettingsHandler* handler) ApplyAllFn; /// Read: Called after reading (in registration order)
         void function(ImGuiContext* ctx,ImGuiSettingsHandler* handler,ImGuiTextBuffer* out_buf) WriteAllFn; /// Write: Output every entries into 'out_buf'
         void* UserData;
-        ~this()
-        {
-            ImGuiSettingsHandler_destroy(&this);
-        }
     }
 
     /// Split/Merge functions are used to split the draw list into different layers which can be drawn into out of order.
@@ -2591,20 +2507,12 @@ extern (C) {
         int _Current; /// Current channel number (0)
         int _Count; /// Number of active channels (1+)
         ImVector!(ImDrawChannel) _Channels; /// Draw channels (not resized down so _Count might be < Channels.Size)
-        ~this()
-        {
-            ImDrawListSplitter_destroy(&this);
-        }
     }
 
     /// [Internal] Key+Value for ImGuiStorage
     struct ImGuiStoragePair {
         ImGuiID key;
         union { int val_i; float val_f; void* val_p;} ;
-        ~this()
-        {
-            ImGuiStoragePair_destroy(&this);
-        }
     }
 
     /// [Internal] For use by ImDrawListSplitter
@@ -2623,20 +2531,12 @@ extern (C) {
         ImU8 SortDirection;
         ImS8 IsEnabled; /// "Visible" in ini file
         ImU8 IsStretch;
-        ~this()
-        {
-            ImGuiTableColumnSettings_destroy(&this);
-        }
     }
 
     /// Helper: Growable text buffer for logging/accumulating text
     /// (this could be called 'ImGuiTextBuilder' / 'ImGuiStringBuilder')
     struct ImGuiTextBuffer {
         ImVector!(char) Buf;
-        ~this()
-        {
-            ImGuiTextBuffer_destroy(&this);
-        }
     }
 
     /// Helper: Manually clip large list of items.
@@ -2668,10 +2568,6 @@ extern (C) {
         double StartPosY; /// [Internal] Cursor position at the time of Begin() or after table frozen rows are all processed
         double StartSeekOffsetY; /// [Internal] Account for frozen rows in a table and initial loss of precision in very large windows.
         void* TempData; /// [Internal] Internal data
-        ~this()
-        {
-            ImGuiListClipper_destroy(&this);
-        }
     }
 
     struct ImGuiInputEventMouseButton {
@@ -2706,10 +2602,6 @@ extern (C) {
         ImGuiWindowClass WindowClass;
         ImVec2 MenuBarOffsetMinVal; /// (Always on) This is not exposed publicly, so we don't clear it and it doesn't have a corresponding flag (could we? for consistency?)
         ImGuiWindowRefreshFlags RefreshFlagsVal;
-        ~this()
-        {
-            ImGuiNextWindowData_destroy(&this);
-        }
     }
 
     /// (Optional) This is required when enabling multi-viewport. Represent the bounds of each connected monitor/display and their DPI.
@@ -2721,10 +2613,6 @@ extern (C) {
         ImVec2 WorkSize; /// Coordinates without task bars / side bars / menu bars. Used to avoid positioning popups/tooltips inside this region. If you don't have this info, please copy the value for MainPos/MainSize.
         float DpiScale; /// 1.0f = 96 DPI
         void* PlatformHandle; /// Backend dependant data (e.g. HMONITOR, GLFWmonitor*, SDL Display Index, NSScreen*)
-        ~this()
-        {
-            ImGuiPlatformMonitor_destroy(&this);
-        }
     }
 
     struct ImGuiMetricsConfig {
@@ -2752,20 +2640,12 @@ extern (C) {
         ImGuiID OwnerNext;
         bool LockThisFrame; /// Reading this key requires explicit owner id (until end of frame). Set by ImGuiInputFlags_LockThisFrame.
         bool LockUntilRelease; /// Reading this key requires explicit owner id (until key is released). Set by ImGuiInputFlags_LockUntilRelease. When this is true LockThisFrame is always true as well.
-        ~this()
-        {
-            ImGuiKeyOwnerData_destroy(&this);
-        }
     }
 
     /// Stacked style modifier, backup of modified data so we can restore it. Data type inferred from the variable.
     struct ImGuiStyleMod {
         ImGuiStyleVar VarIdx;
         union { int[2] BackupInt; float[2] BackupFloat;} ;
-        ~this()
-        {
-            ImGuiStyleMod_destroy(&this);
-        }
     }
 
     /// - Currently represents the Platform Window created by the application which is hosting our Dear ImGui windows.
@@ -2799,10 +2679,6 @@ extern (C) {
         bool PlatformRequestMove; /// Platform window requested move (e.g. window was moved by the OS / host window manager, authoritative position will be OS window position)
         bool PlatformRequestResize; /// Platform window requested resize (e.g. window was resized by the OS / host window manager, authoritative size will be OS window size)
         bool PlatformRequestClose; /// Platform window requested closure (e.g. window was moved by the OS / host window manager, e.g. pressing ALT-F4)
-        ~this()
-        {
-            ImGuiViewport_destroy(&this);
-        }
     }
 
     /// Optional helper to store multi-selection state + apply multi-selection requests.
@@ -2830,10 +2706,6 @@ extern (C) {
         ImGuiID function(ImGuiSelectionBasicStorage* self,int idx) AdapterIndexToStorageId; /// e.g. selection.AdapterIndexToStorageId = [](ImGuiSelectionBasicStorage* self, int idx)  return ((MyItems**)self->UserData)[idx]->ID; ;
         int _SelectionOrder; /// [Internal] Increasing counter to store selection order
         ImGuiStorage _Storage; /// [Internal] Selection set. Think of this as similar to e.g. std::set<ImGuiID>. Prefer not accessing directly: iterate with GetNextSelectedItem().
-        ~this()
-        {
-            ImGuiSelectionBasicStorage_destroy(&this);
-        }
     }
 
     struct ImGuiDockPreviewData {
@@ -2846,10 +2718,6 @@ extern (C) {
         ImGuiDir SplitDir;
         float SplitRatio;
         ImRect[4+1] DropRectsDraw; /// May be slightly different from hit-testing drop rects used in DockNodeCalcDropRects()
-        ~this()
-        {
-            ImGuiDockPreviewData_destroy(&this);
-        }
     }
 
     /// [ALPHA] Rarely used / very advanced uses only. Use with SetNextWindowClass() and DockSpace() functions.
@@ -2869,10 +2737,6 @@ extern (C) {
         ImGuiDockNodeFlags DockNodeFlagsOverrideSet; /// [EXPERIMENTAL] Dock node flags to set when a window of this class is hosted by a dock node (it doesn't have to be selected!)
         bool DockingAlwaysTabBar; /// Set to true to enforce single floating windows of this class always having their own docking node (equivalent of setting the global io.ConfigDockingAlwaysTabBar)
         bool DockingAllowUnclassed; /// Set to true to allow windows of this class to be docked/merged with an unclassed window. /// FIXME-DOCK: Move to DockNodeFlags override?
-        ~this()
-        {
-            ImGuiWindowClass_destroy(&this);
-        }
     }
 
     /// This is designed to be stored in a single ImChunkStream (1 header followed by N ImGuiTableColumnSettings, etc.)
@@ -2883,20 +2747,12 @@ extern (C) {
         ImGuiTableColumnIdx ColumnsCount;
         ImGuiTableColumnIdx ColumnsCountMax; /// Maximum number of columns this settings instance can store, we can recycle a settings instance with lower number of columns but not higher
         bool WantApply; /// Set when loaded from .ini data (to enable merging/loading .ini data into an already running context)
-        ~this()
-        {
-            ImGuiTableSettings_destroy(&this);
-        }
     }
 
     /// Helper: ImVec2i (2D vector, integer)
     struct ImVec2i {
         int x;
         int y;
-        ~this()
-        {
-            ImVec2i_destroy(&this);
-        }
     }
 
     /// Load and rasterize multiple TTF/OTF fonts into a same texture. The font atlas will build a single texture holding:
@@ -2951,10 +2807,6 @@ extern (C) {
         uint FontLoaderFlags; /// Shared flags (for all fonts) for font loader. THIS IS BUILD IMPLEMENTATION DEPENDENT (e.g. Per-font override is also available in ImFontConfig).
         int RefCount; /// Number of contexts using this atlas
         ImGuiContext* OwnerContext; /// Context which own the atlas will be in charge of updating and destroying it.
-        ~this()
-        {
-            ImFontAtlas_destroy(&this);
-        }
     }
 
     /// Store data emitted by TreeNode() for usage by TreePop()
@@ -2994,10 +2846,6 @@ extern (C) {
         int StepNo;
         int ItemsFrozen;
         ImVector!(ImGuiListClipperRange) Ranges;
-        ~this()
-        {
-            ImGuiListClipperData_destroy(&this);
-        }
     }
 
     /// ImGuiViewport Private/Internals fields (cardinal sin: we are using inheritance!)
@@ -3030,18 +2878,10 @@ extern (C) {
         ImVec2 WorkInsetMax; /// "
         ImVec2 BuildWorkInsetMin; /// Work Area inset accumulator for current frame, to become next frame's WorkInset
         ImVec2 BuildWorkInsetMax; /// "
-        ~this()
-        {
-            ImGuiViewportP_destroy(&this);
-        }
     }
 
     struct ImVec1 {
         float x;
-        ~this()
-        {
-            ImVec1_destroy(&this);
-        }
     }
 
     /// Storage for navigation query/results
@@ -3055,10 +2895,6 @@ extern (C) {
         float DistCenter; ///      Move    /// Best candidate center distance to current NavId
         float DistAxial; ///      Move    /// Best candidate axial distance to current NavId
         ImGuiSelectionUserData SelectionUserData; //I+Mov    /// Best candidate SetNextItemSelectionUserData() value. Valid if (ItemFlags & ImGuiItemFlags_HasSelectionUserData)
-        ~this()
-        {
-            ImGuiNavItemData_destroy(&this);
-        }
     }
 
     /// Selection request item
@@ -3096,10 +2932,6 @@ extern (C) {
         ImGuiID BakedId; /// 4     //
         ImFont* ContainerFont; /// 4-8   /// in  /// Parent font
         void* FontLoaderDatas; /// 4-8   ///     /// Font loader opaque storage (per baked font * sources): single contiguous buffer allocated by imgui, passed to loader.
-        ~this()
-        {
-            ImFontBaked_destroy(&this);
-        }
     }
 
     /// Hooks and storage for a given font backend.
@@ -3118,10 +2950,6 @@ extern (C) {
              /// Size of backend data, Per Baked * Per Source. Buffers are managed by core to avoid excessive allocations.
             /// FIXME: At this point the two other types of buffers may be managed by core to be consistent?
         size_t FontBakedSrcLoaderDataSize;
-        ~this()
-        {
-            ImFontLoader_destroy(&this);
-        }
     }
 
     /// Persistent Settings data, stored contiguously in SettingsNodes (sizeof() ~32 bytes)
@@ -3136,10 +2964,6 @@ extern (C) {
         ImVec2ih Pos;
         ImVec2ih Size;
         ImVec2ih SizeRef;
-        ~this()
-        {
-            ImGuiDockNodeSettings_destroy(&this);
-        }
     }
 
     /// Storage data for BeginComboPreview()/EndComboPreview()
@@ -3150,20 +2974,12 @@ extern (C) {
         ImVec2 BackupCursorPosPrevLine;
         float BackupPrevLineTextBaseOffset;
         ImGuiLayoutType BackupLayout;
-        ~this()
-        {
-            ImGuiComboPreviewData_destroy(&this);
-        }
     }
 
     /// Helper: ImVec2ih (2D vector, half-size integer, for long-term packed storage)
     struct ImVec2ih {
         short x;
         short y;
-        ~this()
-        {
-            ImVec2ih_destroy(&this);
-        }
     }
 
     /// Resizing callback data to apply custom constraint. As enabled by SetNextWindowSizeConstraints(). Callback is called during the next Begin().
@@ -3186,10 +3002,6 @@ extern (C) {
     struct ImRect {
         ImVec2 Min; /// Upper-left
         ImVec2 Max; /// Lower-right
-        ~this()
-        {
-            ImRect_destroy(&this);
-        }
     }
 
     /// Main IO structure returned by BeginMultiSelect()/EndMultiSelect().
@@ -3365,10 +3177,6 @@ extern (C) {
         bool AppAcceptingEvents; /// Only modify via SetAppAcceptingEvents()
         ImWchar16 InputQueueSurrogate; /// For AddInputCharacterUTF16()
         ImVector!(ImWchar) InputQueueCharacters; /// Queue of _characters_ input (obtained by platform backend). Fill using AddInputCharacter() helper.
-        ~this()
-        {
-            ImGuiIO_destroy(&this);
-        }
     }
 
     /// Per-instance data that needs preserving across frames (seemingly most others do not need to be preserved aside from debug needs. Does that means they could be moved to ImGuiTableTempData?)
@@ -3380,20 +3188,12 @@ extern (C) {
         float LastFrozenHeight; /// Height of frozen section from last frame
         int HoveredRowLast; /// Index of row which was hovered last frame.
         int HoveredRowNext; /// Index of row hovered this frame, set after encountering it.
-        ~this()
-        {
-            ImGuiTableInstanceData_destroy(&this);
-        }
     }
 
     struct ImTextureRef {
              /// Members (either are set, never both!)
         ImTextureData* _TexData; ///      A texture, generally owned by a ImFontAtlas. Will convert to ImTextureID during render loop, after texture has been uploaded.
         ImTextureID _TexID; /// _OR_ Low-level backend texture identifier, if already uploaded or created by user/app. Generally provided to e.g. ImGui::Image() calls.
-        ~this()
-        {
-            ImTextureRef_destroy(&this);
-        }
     }
 
     /// Data payload for Drag and Drop operations: AcceptDragDropPayload(), GetDragDropPayload()
@@ -3409,10 +3209,6 @@ extern (C) {
         char[32+1] DataType; /// Data type tag (short user-supplied string, 32 characters max)
         bool Preview; /// Set when AcceptDragDropPayload() was called and mouse has been hovering the target item (nb: handle overlapping drag targets)
         bool Delivery; /// Set when AcceptDragDropPayload() was called and mouse button is released over the target item.
-        ~this()
-        {
-            ImGuiPayload_destroy(&this);
-        }
     }
 
     /// Helper: ImBitVector
@@ -3461,10 +3257,6 @@ extern (C) {
         int CursorPos; ///                                      /// Read-write   /// [Completion,History,Always]
         int SelectionStart; ///                                      /// Read-write   /// [Completion,History,Always] == to SelectionEnd when no selection)
         int SelectionEnd; ///                                      /// Read-write   /// [Completion,History,Always]
-        ~this()
-        {
-            ImGuiInputTextCallbackData_destroy(&this);
-        }
     }
 
     struct ImGuiInputEventAppFocused {
@@ -3513,10 +3305,6 @@ extern (C) {
         ImFont* DstFont; /// Target font (as we merging fonts, multiple ImFontConfig may target the same font)
         const(ImFontLoader)* FontLoader; /// Custom font backend for this source (other use one stored in ImFontAtlas)
         void* FontLoaderData; /// Font loader opaque storage (per font config)
-        ~this()
-        {
-            ImFontConfig_destroy(&this);
-        }
     }
 
     /// Status storage for the last submitted item
@@ -3531,10 +3319,6 @@ extern (C) {
         ImRect DisplayRect; /// Display rectangle. ONLY VALID IF (StatusFlags & ImGuiItemStatusFlags_HasDisplayRect) is set.
         ImRect ClipRect; /// Clip rectangle at the time of submitting item. ONLY VALID IF (StatusFlags & ImGuiItemStatusFlags_HasClipRect) is set..
         ImGuiKeyChord Shortcut; /// Shortcut at the time of submitting item. ONLY VALID IF (StatusFlags & ImGuiItemStatusFlags_HasShortcut) is set..
-        ~this()
-        {
-            ImGuiLastItemData_destroy(&this);
-        }
     }
 
     /// [Internal] For use by ImDrawList
@@ -3567,10 +3351,6 @@ extern (C) {
         ImVec2[48] ArcFastVtx; /// Sample points on the quarter of the circle.
         float ArcFastRadiusCutoff; /// Cutoff radius after which arc drawing will fallback to slower PathArcTo()
         ImU8[64] CircleSegmentCounts; /// Precomputed segment count for given radius before we calculate it dynamically (to avoid calculation overhead)
-        ~this()
-        {
-            ImDrawListSharedData_destroy(&this);
-        }
     }
 
     struct ImGuiDebugAllocInfo {
@@ -3578,10 +3358,6 @@ extern (C) {
         int TotalFreeCount;
         ImS16 LastEntriesIdx; /// Current index in buffer
         ImGuiDebugAllocEntry[6] LastEntriesBuf; /// Track last 6 frames that had allocations
-        ~this()
-        {
-            ImGuiDebugAllocInfo_destroy(&this);
-        }
     }
 
     /// All draw data to render a Dear ImGui frame
@@ -3598,10 +3374,6 @@ extern (C) {
         ImVec2 FramebufferScale; /// Amount of pixels for each unit of DisplaySize. Copied from viewport->FramebufferScale (== io.DisplayFramebufferScale for main viewport). Generally (1,1) on normal display, (2,2) on OSX with Retina display.
         ImGuiViewport* OwnerViewport; /// Viewport carrying the ImDrawData instance, might be of use to the renderer (generally not).
         ImVector!(ImTextureData*)* Textures; /// List of textures to update. Most of the times the list is shared by all ImDrawData, has only 1 texture and it doesn't need any update. This almost always points to ImGui::GetPlatformIO().Textures[]. May be overriden or set to NULL if you want to manually update textures.
-        ~this()
-        {
-            ImDrawData_destroy(&this);
-        }
     }
 
     /// Internal state of the currently focused/edited text input box
@@ -3625,10 +3397,6 @@ extern (C) {
         bool WantReloadUserBuf; /// force a reload of user buf so it may be modified externally. may be automatic in future version.
         int ReloadSelectionStart;
         int ReloadSelectionEnd;
-        ~this()
-        {
-            ImGuiInputTextState_destroy(&this);
-        }
     }
 
     struct ImGuiLocEntry {
@@ -3639,10 +3407,6 @@ extern (C) {
     struct ImGuiPtrOrIndex {
         void* Ptr; /// Either field can be set, not both. e.g. Dock node tab bars are loose while BeginTabBar() ones are in a pool.
         int Index; /// Usually index in a main pool.
-        ~this()
-        {
-            ImGuiPtrOrIndex_destroy(&this);
-        }
     }
 
     struct ImGuiDataTypeStorage {
@@ -3653,10 +3417,6 @@ extern (C) {
     struct ImGuiInputTextDeactivatedState {
         ImGuiID ID; /// widget id owning the text state (which just got deactivated)
         ImVector!(char) TextA; /// text buffer
-        ~this()
-        {
-            ImGuiInputTextDeactivatedState_destroy(&this);
-        }
     }
 
     /// Coordinates of a rectangle within a texture.
@@ -3684,10 +3444,6 @@ extern (C) {
         void* UserCallbackData; /// 4-8  /// Callback user data (when UserCallback != NULL). If called AddCallback() with size == 0, this is a copy of the AddCallback() argument. If called AddCallback() with size > 0, this is pointing to a buffer where data is stored.
         int UserCallbackDataSize; /// 4 /// Size of callback user data when using storage, otherwise 0.
         int UserCallbackDataOffset; /// 4 /// [Internal] Offset of callback user data when using storage, otherwise -1.
-        ~this()
-        {
-            ImDrawCmd_destroy(&this);
-        }
     }
 
     struct ImGuiContextHook {
@@ -3696,10 +3452,6 @@ extern (C) {
         ImGuiID Owner;
         ImGuiContextHookCallback Callback;
         void* UserData;
-        ~this()
-        {
-            ImGuiContextHook_destroy(&this);
-        }
     }
 
     /// State for ID Stack tool queries
@@ -3711,10 +3463,6 @@ extern (C) {
         bool CopyToClipboardOnCtrlC;
         float CopyToClipboardLastTime;
         ImGuiTextBuffer ResultPathBuf;
-        ~this()
-        {
-            ImGuiIDStackTool_destroy(&this);
-        }
     }
 
     /// Helper: ImGuiTextIndex
@@ -3749,10 +3497,6 @@ extern (C) {
         ImRect UnclipRect; /// Rectangle where ItemAdd() clipping may be temporarily disabled. Need support by multi-select supporting widgets.
         ImRect BoxSelectRectPrev; /// Selection rectangle in absolute coordinates (derived every frame from BoxSelectStartPosRel and MousePos)
         ImRect BoxSelectRectCurr;
-        ~this()
-        {
-            ImGuiBoxSelectState_destroy(&this);
-        }
     }
 
     /// sizeof() 156~192
@@ -3799,10 +3543,6 @@ extern (C) {
         bool WantMouseMove; /// After a node extraction we need to transition toward moving the newly created host window
         bool WantHiddenTabBarUpdate;
         bool WantHiddenTabBarToggle;
-        ~this()
-        {
-            ImGuiDockNode_destroy(&this);
-        }
     }
 
     /// Helper: Key->Value storage
@@ -3823,10 +3563,6 @@ extern (C) {
     /// This is essentially a tightly packed of vector of 64k booleans = 8KB storage.
     struct ImFontGlyphRangesBuilder {
         ImVector!(ImU32) UsedChars; /// Store 1-bit per Unicode code point (0=unused, 1=used)
-        ~this()
-        {
-            ImFontGlyphRangesBuilder_destroy(&this);
-        }
     }
 
     /// Helper: Parse and apply text filters. In format "aaaaa[,bbbb][,ccccc]"
@@ -3834,10 +3570,6 @@ extern (C) {
         char[256] InputBuf;
         ImVector!(ImGuiTextRange) Filters;
         int CountGrep;
-        ~this()
-        {
-            ImGuiTextFilter_destroy(&this);
-        }
     }
 
     /// Storage for a tab bar (sizeof() 160 bytes)
@@ -3876,10 +3608,6 @@ extern (C) {
         ImVec2 FramePadding; /// style.FramePadding locked at the time of BeginTabBar()
         ImVec2 BackupCursorPos;
         ImGuiTextBuffer TabsNames; /// For non-docking tab bar we re-append names in a contiguous buffer.
-        ~this()
-        {
-            ImGuiTabBar_destroy(&this);
-        }
     }
 
     struct ImGuiInputEvent {
@@ -3888,19 +3616,11 @@ extern (C) {
         ImU32 EventId; /// Unique, sequential increasing integer to identify an event (if you need to correlate them to other data).
         union { ImGuiInputEventMousePos MousePos; ImGuiInputEventMouseWheel MouseWheel; ImGuiInputEventMouseButton MouseButton; ImGuiInputEventMouseViewport MouseViewport; ImGuiInputEventKey Key; ImGuiInputEventText Text; ImGuiInputEventAppFocused AppFocused;} ; /// if Type == ImGuiInputEventType_MousePos/// if Type == ImGuiInputEventType_MouseWheel/// if Type == ImGuiInputEventType_MouseButton/// if Type == ImGuiInputEventType_MouseViewport/// if Type == ImGuiInputEventType_Key/// if Type == ImGuiInputEventType_Text/// if Type == ImGuiInputEventType_Focus
         bool AddedByTestEngine;
-        ~this()
-        {
-            ImGuiInputEvent_destroy(&this);
-        }
     }
 
     struct ImVec2 {
         float x;
         float y;
-        ~this()
-        {
-            ImVec2_destroy(&this);
-        }
     }
 
     /// Data used by IsItemDeactivated()/IsItemDeactivatedAfterEdit() functions
@@ -4009,10 +3729,6 @@ extern (C) {
              /// Viewports list (the list is updated by calling ImGui::EndFrame or ImGui::Render)
             /// (in the future we will attempt to organize this feature to remove the need for a "main viewport")
         ImVector!(ImGuiViewport*) Viewports; /// Main viewports, followed by all secondary viewports.
-        ~this()
-        {
-            ImGuiPlatformIO_destroy(&this);
-        }
     }
 
     /// Helper: ImColor() implicitly converts colors to either ImU32 (packed 4x1 byte) or ImVec4 (4x1 float)
@@ -4021,10 +3737,6 @@ extern (C) {
     /// **None of the ImGui API are using ImColor directly but you can use it as a convenience to pass colors in either ImU32 or ImVec4 formats. Explicitly cast to ImU32 or ImVec4 if needed.
     struct ImColor {
         ImVec4 Value;
-        ~this()
-        {
-            ImColor_destroy(&this);
-        }
     }
 
     struct ImGuiOldColumns {
@@ -4045,10 +3757,6 @@ extern (C) {
         ImRect HostBackupParentWorkRect; //Backup of WorkRect at the time of BeginColumns()
         ImVector!(ImGuiOldColumnData) Columns;
         ImDrawListSplitter Splitter;
-        ~this()
-        {
-            ImGuiOldColumns_destroy(&this);
-        }
     }
 
     /// Specs and pixel storage for a texture used by Dear ImGui.
@@ -4077,10 +3785,6 @@ extern (C) {
         ushort RefCount; /// w    r   /// Number of contexts using this texture. Used during backend shutdown.
         bool UseColors; /// w    r   /// Tell whether our texture data is known to use colors (rather than just white + alpha).
         bool WantDestroyNextFrame; /// rw   -   /// [Internal] Queued to set ImTextureStatus_WantDestroy next frame. May still be used in the current frame.
-        ~this()
-        {
-            ImTextureData_destroy(&this);
-        }
     }
 
     struct ImGuiStyle {
@@ -4155,10 +3859,6 @@ extern (C) {
              /// [Internal]
         float _MainScale; /// FIXME-WIP: Reference scale, as applied by ScaleAllSizes().
         float _NextFrameFontSizeBase; /// FIXME: Temporary hack until we finish remaining work.
-        ~this()
-        {
-            ImGuiStyle_destroy(&this);
-        }
     }
 
     /// Internal storage for incrementally packing and building a ImFontAtlas
@@ -4185,10 +3885,6 @@ extern (C) {
              /// Custom rectangle identifiers
         ImFontAtlasRectId PackIdMouseCursors; /// White pixel + mouse cursors. Also happen to be fallback in case of packing failure.
         ImFontAtlasRectId PackIdLinesTexData;
-        ~this()
-        {
-            ImFontAtlasBuilder_destroy(&this);
-        }
     }
 
     struct ImGuiDebugAllocEntry {
@@ -4552,10 +4248,6 @@ extern (C) {
         int WantTextInputNextFrame; /// Copied in EndFrame() from g.PlatformImeData.WanttextInput. Needs to be set for some backends (SDL3) to emit character inputs.
         ImVector!(char) TempBuffer; /// Temporary text buffer
         char[64] TempKeychordName;
-        ~this()
-        {
-            ImGuiContext_destroy(&this);
-        }
     }
 
     /// [Internal] sizeof() ~ 112
@@ -4605,10 +4297,6 @@ extern (C) {
         ImU8 SortDirectionsAvailCount; /// Number of available sort directions (0 to 3)
         ImU8 SortDirectionsAvailMask; /// Mask of available sort directions (1-bit each)
         ImU8 SortDirectionsAvailList; /// Ordered list of available sort directions (2-bits each, total 8-bits)
-        ~this()
-        {
-            ImGuiTableColumn_destroy(&this);
-        }
     }
 
     /// Sorting specifications for a table (often handling sort specs for a single column, occasionally more)
@@ -4619,10 +4307,6 @@ extern (C) {
         const ImGuiTableColumnSortSpecs* Specs; /// Pointer to sort spec array.
         int SpecsCount; /// Sort spec count. Most often 1. May be > 1 when ImGuiTableFlags_SortMulti is enabled. May be == 0 when ImGuiTableFlags_SortTristate is enabled.
         bool SpecsDirty; /// Set to true when specs have changed since last time! Use this to sort again, then clear the flag.
-        ~this()
-        {
-            ImGuiTableSortSpecs_destroy(&this);
-        }
     }
 
     /// Packed rectangle lookup entry (we need an indirection to allow removing/reordering rectangles)
@@ -4642,10 +4326,6 @@ extern (C) {
         ImS16 ColumnIndex; /// Index of the column
         ImS16 SortOrder; /// Index within parent ImGuiTableSortSpecs (always stored in order starting from 0, tables sorted on a single criteria will always have a 0 here)
         ImGuiSortDirection SortDirection; /// ImGuiSortDirection_Ascending or ImGuiSortDirection_Descending
-        ~this()
-        {
-            ImGuiTableColumnSortSpecs_destroy(&this);
-        }
     }
 
     /// Temporary storage for multi-select
@@ -4666,20 +4346,12 @@ extern (C) {
         bool NavIdPassedBy;
         bool RangeSrcPassedBy; /// Set by the item that matches RangeSrcItem.
         bool RangeDstPassedBy; /// Set by the item that matches NavJustMovedToId when IsSetRange is set.
-        ~this()
-        {
-            ImGuiMultiSelectTempData_destroy(&this);
-        }
     }
 
     /// Helper: Execute a block of code at maximum once a frame. Convenient if you want to quickly create a UI within deep-nested code that runs multiple times every frame.
     /// Usage: static ImGuiOnceUponAFrame oaf; if (oaf) ImGui::Text("This will be called only once per frame");
     struct ImGuiOnceUponAFrame {
         int RefFrame;
-        ~this()
-        {
-            ImGuiOnceUponAFrame_destroy(&this);
-        }
     }
 
     /// Windows data saved in imgui.ini file
@@ -4698,10 +4370,6 @@ extern (C) {
         bool IsChild;
         bool WantApply; /// Set when loaded from .ini data (to enable merging/loading .ini data into an already running context)
         bool WantDelete; /// Set to invalidate/delete the settings entry
-        ~this()
-        {
-            ImGuiWindowSettings_destroy(&this);
-        }
     }
 
     /// (Optional) Support for IME (Input Method Editor) via the platform_io.Platform_SetImeDataFn() function. Handler is called during EndFrame().
@@ -4711,10 +4379,6 @@ extern (C) {
         ImVec2 InputPos; /// Position of input cursor (for IME).
         float InputLineHeight; /// Line height (for IME).
         ImGuiID ViewportId; /// ID of platform window/viewport.
-        ~this()
-        {
-            ImGuiPlatformImeData_destroy(&this);
-        }
     }
 
     /// Draw command list
@@ -4746,10 +4410,6 @@ extern (C) {
         ImVector!(ImU8) _CallbacksDataBuf; /// [Internal]
         float _FringeScale; /// [Internal] anti-alias fringe is scaled by this value, this helps to keep things sharp while zooming at vertex buffer content
         const(char)* _OwnerName; /// Pointer to owner window's name for debugging
-        ~this()
-        {
-            ImDrawList_destroy(&this);
-        }
     }
 
     /// Storage for GetTypingSelectRequest()
@@ -4760,10 +4420,6 @@ extern (C) {
         int LastRequestFrame;
         float LastRequestTime;
         bool SingleCharModeLock; /// After a certain single char repeat count we lock into SingleCharMode. Two benefits: 1) buffer never fill, 2) we can provide an immediate SingleChar mode without timer elapsing.
-        ~this()
-        {
-            ImGuiTypingSelectState_destroy(&this);
-        }
     }
 
     /// Simple column measurement, currently used for MenuItem() only.. This is very short-sighted/throw-away code and NOT a generic helper.
@@ -4776,10 +4432,6 @@ extern (C) {
         ImU16 OffsetShortcut;
         ImU16 OffsetMark;
         ImU16[4] Widths; /// Width of:   Icon, Label, Shortcut, Mark  (accumulators for current frame)
-        ~this()
-        {
-            ImGuiMenuColumns_destroy(&this);
-        }
     }
 
     struct ImGuiInputEventMouseViewport {
@@ -4801,10 +4453,6 @@ extern (C) {
         ImS16 BeginOrder; /// BeginTabItem() order, used to re-order tabs after toggling ImGuiTabBarFlags_Reorderable
         ImS16 IndexDuringLayout; /// Index only used during TabBarLayout(). Tabs gets reordered so 'Tabs[n].IndexDuringLayout == n' but may mismatch during additions.
         bool WantClose; /// Marked as closed by SetTabItemClosed()
-        ~this()
-        {
-            ImGuiTabItem_destroy(&this);
-        }
     }
 
     /// FIXME: Structures in the union below need to be declared as anonymous unions appears to be an extension?

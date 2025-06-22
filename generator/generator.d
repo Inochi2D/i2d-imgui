@@ -1150,14 +1150,14 @@ void write_structs(code_writer codeWriter, JSONValue struct_definitions, JSONVal
             codeWriter.put_lines(format("%s %s;%s", typeName, objectName, sameline_comment));
         }
 
-        if (hasDestructor)
-        {
-            codeWriter.put_lines("~this()\n");
-            codeWriter.write_indent();
-            codeWriter.add_scope();
-            codeWriter.put_lines(destructor_name ~ "(&this);");
-            codeWriter.remove_scope();
-        }
+        //if (hasDestructor)
+        //{
+        //    codeWriter.put_lines("~this()\n");
+        //    codeWriter.write_indent();
+        //    codeWriter.add_scope();
+        //    codeWriter.put_lines(destructor_name ~ "(&this);");
+        //    codeWriter.remove_scope();
+        //}
 
         codeWriter.remove_scope();
         codeWriter.line_break();
