@@ -355,7 +355,26 @@ struct code_writer
     int indent = 0;
 }
 
-string neededStructs = `
+string neededStructsAndFunctions = `
+tType GetBitmask(tType)(ubyte accumulatedBits, ubyte numberOfBits)
+{
+    OriginalType!tType blank = 0;
+    for (ubyte i = accumulatedBits; i < (accumulatedBits + numberOfBits); ++i)
+    {
+        blank = cast(OriginalType!tType)(blank ^ (1 << i));
+    }
+    return cast(tType)blank;
+}
+
+tType GetValue(tType)(tType aBitField, ubyte accumulatedBits, ubyte numberOfBits) {
+    tType bitmask = GetBitmask!tType(accumulatedBits, numberOfBits);
+    return (aBitField & bitmask) >> accumulatedBits;
+}
+
+tType SetValue(tType)(tType aBitField, ubyte accumulatedBits, ubyte numberOfBits, tType aValue) {
+    return cast(tType)((aBitField & ~GetBitmask!tType(accumulatedBits, numberOfBits)) | (aValue << accumulatedBits));
+}
+
 alias stbrp_coord = int;
 struct stbrp_node
 {
@@ -1087,6 +1106,16 @@ void write_enums(code_writer codeWriter, JSONValue definitions)
     }
 }
 
+uint get_bitmask(uint accumulatedBits, uint numberOfBits)
+{
+    uint blank = 0;
+    for (uint i = accumulatedBits; i < (accumulatedBits + numberOfBits); ++i)
+    {
+        blank = blank ^ (1 << i);
+    }
+    return blank;
+}
+
 void write_structs(code_writer codeWriter, JSONValue struct_definitions, JSONValue function_definitions)
 {
     auto struct_comments = struct_definitions["struct_comments"];
@@ -1110,12 +1139,13 @@ void write_structs(code_writer codeWriter, JSONValue struct_definitions, JSONVal
             }
         }
 
-        bool hasBitfield = false;
         size_t bitfieldNumber = 0;
         size_t accumulatedBits = 0;
         string bitfield_typeName = "";
         string bitfield_objectName = "";
         string bitfield_above_comment = "";
+
+        string bitfieldHelpers = "";
 
         foreach (JSONValue value; structMembers.array)
         {
@@ -1135,53 +1165,87 @@ void write_structs(code_writer codeWriter, JSONValue struct_definitions, JSONVal
                 }
             }
 
-            if (("bitfield" in value) && ((bitfield_typeName == typeName) || (bitfield_typeName.length == 0)))
-            {
-                size_t bitsOfField = to!int(value["bitfield"].str);
+            bool newBitfield = false;
+            bool existingBitfield = false;
+            bool endingBitfield = false;
 
-                if (!hasBitfield) 
-                {
-                    bitfield_typeName = typeName;
-                    bitfield_objectName = format("bitfield_%s", bitfieldNumber);
-                    bitfield_above_comment = "// This is a bitfield, we cannot replicate this in the D binding.";
-                    
-                    if (above_comment.length != 0)
-                        bitfield_above_comment ~= "\n" ~ above_comment;
-
-                    bitfield_above_comment ~= format("\n//%s %s : %d;%s", typeName, objectName, bitsOfField, sameline_comment);
-                    hasBitfield = true;
-                    ++bitfieldNumber;
+            if ("bitfield" in value) {
+                if (bitfield_typeName.length == 0) {
+                    // We're starting a new bitfield
+                    newBitfield = true;
                 }
-                else
-                {
-                    if (above_comment.length != 0)
-                        bitfield_above_comment ~= "\n" ~ above_comment;
-
-                    bitfield_above_comment ~= format("\n//%s %s : %d;%s", typeName, objectName, bitsOfField, sameline_comment);
+                else if ((bitfield_typeName.length != 0) && (bitfield_typeName != typeName)) {
+                    // We're ending the existing bitfield, and starting a new one.
+                    newBitfield = true;
+                    endingBitfield = true;
                 }
-                accumulatedBits += bitsOfField;
-                writeln(structName ~ " has a bitfield that takes " ~ to!string(bitsOfField) ~ " bits!");
-                continue;
+                else if (bitfield_typeName == typeName) {
+                    // We're adding on to the previous bitfield
+                    existingBitfield = true;
+                }
             }
-            // If the current field is no longer a bitfield, then we can finally emit the accumulated field.
-            else if (hasBitfield)
+
+            if (endingBitfield)
             {
-                writeln(structName ~ " has an accumulated field that takes " ~ to!string(accumulatedBits) ~ " bits!");
+                //writeln(structName ~ " has an accumulated field that takes " ~ to!string(accumulatedBits) ~ " bits!");
 
                 if (bitfield_above_comment.length != 0)
                     codeWriter.put_lines(bitfield_above_comment);
 
                 codeWriter.put_lines(format("%s %s;", bitfield_typeName, bitfield_objectName));
-
+                codeWriter.put_lines(bitfieldHelpers);
                 codeWriter.put_lines(format("static assert((%s.sizeof * 8) >= %d.sizeof);\n", bitfield_objectName, accumulatedBits));
                 
-                hasBitfield = false;
                 accumulatedBits = 0;
                 bitfield_typeName = "";
                 bitfield_objectName = "";
                 bitfield_above_comment = "";
+                bitfieldHelpers = "";
             }
+
+            if (newBitfield || existingBitfield)
+            {
+                if (newBitfield)
+                {
+                    bitfield_typeName = typeName;
+                    bitfield_objectName = format("bitfield_%s", bitfieldNumber);
+                    bitfield_above_comment = "// This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.";
+
+                    ++bitfieldNumber;
+                }
                 
+                size_t bitsOfField = to!int(value["bitfield"].str);
+                
+                bitfieldHelpers ~= format(
+                    "@property %s %s() { return GetValue!%s(%s, %d, %d); }\n", 
+                    bitfield_typeName, 
+                    objectName, 
+                    bitfield_typeName, 
+                    bitfield_objectName,
+                    accumulatedBits, 
+                    bitsOfField
+                );
+
+                bitfieldHelpers ~= format(
+                    "@property void %s(%s aValue) { %s = SetValue(%s, %d, %d, aValue); };\n",
+                    objectName,
+                    bitfield_typeName, 
+                    bitfield_objectName,
+                    bitfield_objectName,
+                    accumulatedBits,
+                    bitsOfField
+                );
+
+                if (above_comment.length != 0)
+                    bitfield_above_comment ~= "\n" ~ above_comment;
+
+                bitfield_above_comment ~= format("\n//%s %s : %d;%s", typeName, objectName, bitsOfField, sameline_comment);
+
+                accumulatedBits += bitsOfField;
+                //writeln(structName ~ " has a bitfield that takes " ~ to!string(bitsOfField) ~ " bits!");
+                continue;
+            }
+
             if ((0 != objectName.length) && (']' == objectName[objectName.length - 1]))
             {
                 ptrdiff_t position = std.string.lastIndexOf(objectName, '[');
@@ -1198,6 +1262,24 @@ void write_structs(code_writer codeWriter, JSONValue struct_definitions, JSONVal
                 codeWriter.put_lines(above_comment);
 
             codeWriter.put_lines(format("%s %s;%s", typeName, objectName, sameline_comment));
+        }
+
+        if (bitfield_typeName.length != 0)
+        {
+            //writeln(structName ~ " has an accumulated field that takes " ~ to!string(accumulatedBits) ~ " bits!");
+
+            if (bitfield_above_comment.length != 0)
+                codeWriter.put_lines(bitfield_above_comment);
+
+            codeWriter.put_lines(format("%s %s;", bitfield_typeName, bitfield_objectName));
+            codeWriter.put_lines(bitfieldHelpers);
+            codeWriter.put_lines(format("static assert((%s.sizeof * 8) >= %d.sizeof);\n", bitfield_objectName, accumulatedBits));
+            
+            accumulatedBits = 0;
+            bitfield_typeName = "";
+            bitfield_objectName = "";
+            bitfield_above_comment = "";
+            bitfieldHelpers = "";
         }
 
         //if (hasDestructor)
@@ -1668,7 +1750,7 @@ void write_imgui_file(
 
     codeWriter.add_normal_extern_c();
 
-    codeWriter.put_lines(neededStructs);    
+    codeWriter.put_lines(neededStructsAndFunctions);    
 
     write_typedefs(codeWriter, typedefs_dict, structs_and_enums);
     auto tempalteStructInfo = write_template_structs(codeWriter, structs_and_enums);
