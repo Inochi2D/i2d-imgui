@@ -27,7 +27,7 @@ extern (C) {
     alias ImU64 = ulong;
     alias ImGuiID = uint;
     alias ImGuiTableDrawChannelIdx = ImU16;
-    alias ImWchar = ImWchar16;
+    alias ImWchar = ImWchar32;
     alias ImGuiInputTextCallback = int      function(ImGuiInputTextCallbackData* data);
     alias ImDrawIdx = ushort;
     alias ImPoolIdx = int;
@@ -2533,7 +2533,7 @@ extern (C) {
         ImVector!(ImFontConfig*) Sources; /// 16    /// in  /// List of sources. Pointers within ContainerAtlas->Sources[]
         ImWchar EllipsisChar; /// 2-4   /// out /// Character used for ellipsis rendering ('...').
         ImWchar FallbackChar; /// 2-4   /// out /// Character used if a glyph isn't found (U+FFFD, '?')
-        ImU8[(0xFFFF+1)/8192/8] Used8kPagesMap; /// 1 bytes if ImWchar=ImWchar16, 16 bytes if ImWchar==ImWchar32. Store 1-bit for each block of 4K codepoints that has one active glyph. This is mainly used to facilitate iterations across all used codepoints.
+        ImU8[(0x10FFFF+1)/8192/8] Used8kPagesMap; /// 1 bytes if ImWchar=ImWchar16, 16 bytes if ImWchar==ImWchar32. Store 1-bit for each block of 4K codepoints that has one active glyph. This is mainly used to facilitate iterations across all used codepoints.
         bool EllipsisAutoBake; /// 1     ///     /// Mark when the "..." glyph needs to be generated.
         ImGuiStorage RemapPairs; /// 16    ///     /// Remapping pairs when using AddRemapChar(), otherwise empty.
         ~this()
