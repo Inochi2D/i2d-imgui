@@ -1184,6 +1184,9 @@ void write_structs(code_writer codeWriter, JSONValue struct_definitions, JSONVal
                     existingBitfield = true;
                 }
             }
+            else if (bitfield_typeName.length != 0) {
+                endingBitfield = true;
+            }
 
             if (endingBitfield)
             {

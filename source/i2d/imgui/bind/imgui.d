@@ -1936,13 +1936,13 @@ extern (C) {
         ImGuiID ID;
         ImS8 QueryFrameCount; /// >= 1: Query in progress
         bool QuerySuccess; /// Obtained result from DebugHookIdInfo()
-        char[57] Desc; /// Arbitrarily sized buffer to hold a result (FIXME: could replace Results[] with a chunk stream?) FIXME: Now that we added CTRL+C this should be fixed.
         // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
         //ImGuiDataType DataType : 8;
         ImGuiDataType bitfield_0;
         @property ImGuiDataType DataType() { return GetValue!ImGuiDataType(bitfield_0, 0, 8); }
         @property void DataType(ImGuiDataType aValue) { bitfield_0 = SetValue(bitfield_0, 0, 8, aValue); };
         static assert((bitfield_0.sizeof * 8) >= 8.sizeof);
+        char[57] Desc; /// Arbitrarily sized buffer to hold a result (FIXME: could replace Results[] with a chunk stream?) FIXME: Now that we added CTRL+C this should be fixed.
     }
 
     /// Data saved for each window pushed into the stack
@@ -2079,6 +2079,21 @@ extern (C) {
         ImS8 HiddenFramesCannotSkipItems; /// Hide the window for N frames while allowing items to be submitted so we can measure their size
         ImS8 HiddenFramesForRenderOnly; /// Hide the window until frame N at Render() time only
         ImS8 DisableInputsFrames; /// Disable window interactions for N frames
+        // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
+        //ImGuiCond SetWindowPosAllowFlags : 8; /// store acceptable condition flags for SetNextWindowPos() use.
+        //ImGuiCond SetWindowSizeAllowFlags : 8; /// store acceptable condition flags for SetNextWindowSize() use.
+        //ImGuiCond SetWindowCollapsedAllowFlags : 8; /// store acceptable condition flags for SetNextWindowCollapsed() use.
+        //ImGuiCond SetWindowDockAllowFlags : 8; /// store acceptable condition flags for SetNextWindowDock() use.
+        ImGuiCond bitfield_0;
+        @property ImGuiCond SetWindowPosAllowFlags() { return GetValue!ImGuiCond(bitfield_0, 0, 8); }
+        @property void SetWindowPosAllowFlags(ImGuiCond aValue) { bitfield_0 = SetValue(bitfield_0, 0, 8, aValue); };
+        @property ImGuiCond SetWindowSizeAllowFlags() { return GetValue!ImGuiCond(bitfield_0, 8, 8); }
+        @property void SetWindowSizeAllowFlags(ImGuiCond aValue) { bitfield_0 = SetValue(bitfield_0, 8, 8, aValue); };
+        @property ImGuiCond SetWindowCollapsedAllowFlags() { return GetValue!ImGuiCond(bitfield_0, 16, 8); }
+        @property void SetWindowCollapsedAllowFlags(ImGuiCond aValue) { bitfield_0 = SetValue(bitfield_0, 16, 8, aValue); };
+        @property ImGuiCond SetWindowDockAllowFlags() { return GetValue!ImGuiCond(bitfield_0, 24, 8); }
+        @property void SetWindowDockAllowFlags(ImGuiCond aValue) { bitfield_0 = SetValue(bitfield_0, 24, 8, aValue); };
+        static assert((bitfield_0.sizeof * 8) >= 32.sizeof);
         ImVec2 SetWindowPosVal; /// store window position when using a non-zero Pivot (position set needs to be processed when we know the window size)
         ImVec2 SetWindowPosPivot; /// store window pivot for positioning. ImVec2(0, 0) when positioning from top-left corner; ImVec2(0.5f, 0.5f) for centering; ImVec2(1, 1) for bottom right.
         ImVector!(ImGuiID) IDStack; /// ID stack. ID are hashes seeded with the value at the top of the stack. (In theory this should be in the TempData structure)
@@ -2123,26 +2138,6 @@ extern (C) {
         int MemoryDrawListVtxCapacity;
         bool MemoryCompacted; /// Set when window extraneous data have been garbage collected
         // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
-        //ImGuiCond SetWindowPosAllowFlags : 8; /// store acceptable condition flags for SetNextWindowPos() use.
-        //ImGuiCond SetWindowSizeAllowFlags : 8; /// store acceptable condition flags for SetNextWindowSize() use.
-        //ImGuiCond SetWindowCollapsedAllowFlags : 8; /// store acceptable condition flags for SetNextWindowCollapsed() use.
-        //ImGuiCond SetWindowDockAllowFlags : 8; /// store acceptable condition flags for SetNextWindowDock() use.
-        ImGuiCond bitfield_0;
-        @property ImGuiCond SetWindowPosAllowFlags() { return GetValue!ImGuiCond(bitfield_0, 0, 8); }
-        @property void SetWindowPosAllowFlags(ImGuiCond aValue) { bitfield_0 = SetValue(bitfield_0, 0, 8, aValue); };
-        @property ImGuiCond SetWindowSizeAllowFlags() { return GetValue!ImGuiCond(bitfield_0, 8, 8); }
-        @property void SetWindowSizeAllowFlags(ImGuiCond aValue) { bitfield_0 = SetValue(bitfield_0, 8, 8, aValue); };
-        @property ImGuiCond SetWindowCollapsedAllowFlags() { return GetValue!ImGuiCond(bitfield_0, 16, 8); }
-        @property void SetWindowCollapsedAllowFlags(ImGuiCond aValue) { bitfield_0 = SetValue(bitfield_0, 16, 8, aValue); };
-        @property ImGuiCond SetWindowDockAllowFlags() { return GetValue!ImGuiCond(bitfield_0, 24, 8); }
-        @property void SetWindowDockAllowFlags(ImGuiCond aValue) { bitfield_0 = SetValue(bitfield_0, 24, 8, aValue); };
-        static assert((bitfield_0.sizeof * 8) >= 32.sizeof);
-        short DockOrder; /// Order of the last time the window was visible within its DockNode. This is used to reorder windows that are reappearing on the same frame. Same value between windows that were active and windows that were none are possible.
-        ImGuiWindowDockStyle DockStyle;
-        ImGuiDockNode* DockNode; /// Which node are we docked into. Important: Prefer testing DockIsActive in many cases as this will still be set when the dock node is hidden.
-        ImGuiDockNode* DockNodeAsHost; /// Which node are we owning (for parent windows)
-        ImGuiID DockId; /// Backup of last valid DockNode->ID, so single window remember their dock node id even when they are not bound any more
-        // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
              /// Docking
         //bool DockIsActive : 1; /// When docking artifacts are actually visible. When this is set, DockNode is guaranteed to be != NULL. ~~ (DockNode != NULL) && (DockNode->Windows.Size > 1).
         //bool DockNodeIsVisible : 1;
@@ -2158,6 +2153,11 @@ extern (C) {
         @property bool DockTabWantClose() { return GetValue!bool(bitfield_1, 3, 1); }
         @property void DockTabWantClose(bool aValue) { bitfield_1 = SetValue(bitfield_1, 3, 1, aValue); };
         static assert((bitfield_1.sizeof * 8) >= 4.sizeof);
+        short DockOrder; /// Order of the last time the window was visible within its DockNode. This is used to reorder windows that are reappearing on the same frame. Same value between windows that were active and windows that were none are possible.
+        ImGuiWindowDockStyle DockStyle;
+        ImGuiDockNode* DockNode; /// Which node are we docked into. Important: Prefer testing DockIsActive in many cases as this will still be set when the dock node is hidden.
+        ImGuiDockNode* DockNodeAsHost; /// Which node are we owning (for parent windows)
+        ImGuiID DockId; /// Backup of last valid DockNode->ID, so single window remember their dock node id even when they are not bound any more
     }
 
     /// Routing table: maintain a desired owner for each possible key-chord (key + mods), and setup owner in NewFrame() when mods are matching.
@@ -2228,6 +2228,15 @@ extern (C) {
         float RowCellPaddingY; /// Top and bottom padding. Reloaded during row change.
         float RowTextBaseline;
         float RowIndentOffsetX;
+        // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
+        //ImGuiTableRowFlags RowFlags : 16; /// Current row flags, see ImGuiTableRowFlags_
+        //ImGuiTableRowFlags LastRowFlags : 16;
+        ImGuiTableRowFlags bitfield_0;
+        @property ImGuiTableRowFlags RowFlags() { return GetValue!ImGuiTableRowFlags(bitfield_0, 0, 16); }
+        @property void RowFlags(ImGuiTableRowFlags aValue) { bitfield_0 = SetValue(bitfield_0, 0, 16, aValue); };
+        @property ImGuiTableRowFlags LastRowFlags() { return GetValue!ImGuiTableRowFlags(bitfield_0, 16, 16); }
+        @property void LastRowFlags(ImGuiTableRowFlags aValue) { bitfield_0 = SetValue(bitfield_0, 16, 16, aValue); };
+        static assert((bitfield_0.sizeof * 8) >= 32.sizeof);
         int RowBgColorCounter; /// Counter for alternating background colors (can be fast-forwarded by e.g clipper), not same as CurrentRow because header rows typically don't increase this.
         ImU32[2] RowBgColor; /// Background color override for current row.
         ImU32 BorderColorStrong;
@@ -2315,15 +2324,6 @@ extern (C) {
         bool HasScrollbarYPrev; /// Whether ANY instance of this table had a vertical scrollbar during the previous.
         bool MemoryCompacted;
         bool HostSkipItems; /// Backup of InnerWindow->SkipItem at the end of BeginTable(), because we will overwrite InnerWindow->SkipItem on a per-column basis
-        // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
-        //ImGuiTableRowFlags RowFlags : 16; /// Current row flags, see ImGuiTableRowFlags_
-        //ImGuiTableRowFlags LastRowFlags : 16;
-        ImGuiTableRowFlags bitfield_0;
-        @property ImGuiTableRowFlags RowFlags() { return GetValue!ImGuiTableRowFlags(bitfield_0, 0, 16); }
-        @property void RowFlags(ImGuiTableRowFlags aValue) { bitfield_0 = SetValue(bitfield_0, 0, 16, aValue); };
-        @property ImGuiTableRowFlags LastRowFlags() { return GetValue!ImGuiTableRowFlags(bitfield_0, 16, 16); }
-        @property void LastRowFlags(ImGuiTableRowFlags aValue) { bitfield_0 = SetValue(bitfield_0, 16, 16, aValue); };
-        static assert((bitfield_0.sizeof * 8) >= 32.sizeof);
     }
 
     /// Output of ImFontAtlas::GetCustomRect() when using custom rectangles.
@@ -2405,16 +2405,6 @@ extern (C) {
     /// Hold rendering data for one glyph.
     /// (Note: some language parsers may fail to convert the bitfield members, in this case maybe drop store a single u32 or we can rework this)
     struct ImFontGlyph {
-        float AdvanceX; /// Horizontal distance to advance cursor/layout position.
-        float X0; /// Glyph corners. Offsets from current cursor/layout position.
-        float Y0; /// Glyph corners. Offsets from current cursor/layout position.
-        float X1; /// Glyph corners. Offsets from current cursor/layout position.
-        float Y1; /// Glyph corners. Offsets from current cursor/layout position.
-        float U0; /// Texture coordinates for the current value of ImFontAtlas->TexRef. Cached equivalent of calling GetCustomRect() with PackId.
-        float V0; /// Texture coordinates for the current value of ImFontAtlas->TexRef. Cached equivalent of calling GetCustomRect() with PackId.
-        float U1; /// Texture coordinates for the current value of ImFontAtlas->TexRef. Cached equivalent of calling GetCustomRect() with PackId.
-        float V1; /// Texture coordinates for the current value of ImFontAtlas->TexRef. Cached equivalent of calling GetCustomRect() with PackId.
-        int PackId; /// [Internal] ImFontAtlasRectId value (FIXME: Cold data, could be moved elsewhere?)
         // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
         //uint Colored : 1; /// Flag to indicate glyph is colored and should generally ignore tinting (make it usable with no shift on little-endian as this is used in loops)
         //uint Visible : 1; /// Flag to indicate glyph has no visible pixels (e.g. space). Allow early out when rendering.
@@ -2430,6 +2420,16 @@ extern (C) {
         @property uint Codepoint() { return GetValue!uint(bitfield_0, 6, 26); }
         @property void Codepoint(uint aValue) { bitfield_0 = SetValue(bitfield_0, 6, 26, aValue); };
         static assert((bitfield_0.sizeof * 8) >= 32.sizeof);
+        float AdvanceX; /// Horizontal distance to advance cursor/layout position.
+        float X0; /// Glyph corners. Offsets from current cursor/layout position.
+        float Y0; /// Glyph corners. Offsets from current cursor/layout position.
+        float X1; /// Glyph corners. Offsets from current cursor/layout position.
+        float Y1; /// Glyph corners. Offsets from current cursor/layout position.
+        float U0; /// Texture coordinates for the current value of ImFontAtlas->TexRef. Cached equivalent of calling GetCustomRect() with PackId.
+        float V0; /// Texture coordinates for the current value of ImFontAtlas->TexRef. Cached equivalent of calling GetCustomRect() with PackId.
+        float U1; /// Texture coordinates for the current value of ImFontAtlas->TexRef. Cached equivalent of calling GetCustomRect() with PackId.
+        float V1; /// Texture coordinates for the current value of ImFontAtlas->TexRef. Cached equivalent of calling GetCustomRect() with PackId.
+        int PackId; /// [Internal] ImFontAtlasRectId value (FIXME: Cold data, could be moved elsewhere?)
     }
 
     struct ImGuiNextItemData {
@@ -3019,10 +3019,6 @@ extern (C) {
         float Ascent; /// 4+4   /// out /// Ascent: distance from top to bottom of e.g. 'A' [0..FontSize] (unscaled)
              /// [Internal] Members: Cold
         float Descent; /// 4+4   /// out /// Ascent: distance from top to bottom of e.g. 'A' [0..FontSize] (unscaled)
-        int LastUsedFrame; /// 4     ///     /// Record of that time this was bounds
-        ImGuiID BakedId; /// 4     //
-        ImFont* ContainerFont; /// 4-8   /// in  /// Parent font
-        void* FontLoaderDatas; /// 4-8   ///     /// Font loader opaque storage (per baked font * sources): single contiguous buffer allocated by imgui, passed to loader.
         // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
         //uint MetricsTotalSurface : 26; /// 3  /// out /// Total surface in pixels to get an idea of the font rasterization/texture cost (not exact, we approximate the cost of padding between glyphs)
         //uint WantDestroy : 1; /// 0  ///     /// Queued for destroy
@@ -3035,6 +3031,10 @@ extern (C) {
         @property uint LockLoadingFallback() { return GetValue!uint(bitfield_0, 27, 1); }
         @property void LockLoadingFallback(uint aValue) { bitfield_0 = SetValue(bitfield_0, 27, 1, aValue); };
         static assert((bitfield_0.sizeof * 8) >= 28.sizeof);
+        int LastUsedFrame; /// 4     ///     /// Record of that time this was bounds
+        ImGuiID BakedId; /// 4     //
+        ImFont* ContainerFont; /// 4-8   /// in  /// Parent font
+        void* FontLoaderDatas; /// 4-8   ///     /// Font loader opaque storage (per baked font * sources): single contiguous buffer allocated by imgui, passed to loader.
     }
 
     /// Hooks and storage for a given font backend.
@@ -3590,6 +3590,12 @@ extern (C) {
         bool IsStartedFromVoid; /// Starting click was not from an item.
         bool IsStartedSetNavIdOnce;
         bool RequestClear;
+        // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
+        //ImGuiKeyChord KeyMods : 16; /// Latched key-mods for box-select logic.
+        ImGuiKeyChord bitfield_0;
+        @property ImGuiKeyChord KeyMods() { return GetValue!ImGuiKeyChord(bitfield_0, 0, 16); }
+        @property void KeyMods(ImGuiKeyChord aValue) { bitfield_0 = SetValue(bitfield_0, 0, 16, aValue); };
+        static assert((bitfield_0.sizeof * 8) >= 16.sizeof);
         ImVec2 StartPosRel; /// Start position in window-contents relative space (to support scrolling)
         ImVec2 EndPosRel; /// End position in window-contents relative space
         ImVec2 ScrollAccum; /// Scrolling accumulator (to behave at high-frame spaces)
@@ -3599,12 +3605,6 @@ extern (C) {
         ImRect UnclipRect; /// Rectangle where ItemAdd() clipping may be temporarily disabled. Need support by multi-select supporting widgets.
         ImRect BoxSelectRectPrev; /// Selection rectangle in absolute coordinates (derived every frame from BoxSelectStartPosRel and MousePos)
         ImRect BoxSelectRectCurr;
-        // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
-        //ImGuiKeyChord KeyMods : 16; /// Latched key-mods for box-select logic.
-        ImGuiKeyChord bitfield_0;
-        @property ImGuiKeyChord KeyMods() { return GetValue!ImGuiKeyChord(bitfield_0, 0, 16); }
-        @property void KeyMods(ImGuiKeyChord aValue) { bitfield_0 = SetValue(bitfield_0, 0, 16, aValue); };
-        static assert((bitfield_0.sizeof * 8) >= 16.sizeof);
     }
 
     /// sizeof() 156~192
@@ -4110,6 +4110,12 @@ extern (C) {
         bool ActiveIdHasBeenEditedBefore; /// Was the value associated to the widget Edited over the course of the Active state.
         bool ActiveIdHasBeenEditedThisFrame;
         bool ActiveIdFromShortcut;
+        // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
+        //int ActiveIdMouseButton : 8;
+        int bitfield_0;
+        @property int ActiveIdMouseButton() { return GetValue!int(bitfield_0, 0, 8); }
+        @property void ActiveIdMouseButton(int aValue) { bitfield_0 = SetValue(bitfield_0, 0, 8, aValue); };
+        static assert((bitfield_0.sizeof * 8) >= 8.sizeof);
         ImVec2 ActiveIdClickOffset; /// Clicked offset from upper-left corner, if applicable (currently only set by ButtonBehavior)
         ImGuiWindow* ActiveIdWindow;
         ImGuiInputSource ActiveIdSource; /// Activating source: ImGuiInputSource_Mouse OR ImGuiInputSource_Keyboard OR ImGuiInputSource_Gamepad
@@ -4389,12 +4395,6 @@ extern (C) {
         int WantTextInputNextFrame; /// Copied in EndFrame() from g.PlatformImeData.WanttextInput. Needs to be set for some backends (SDL3) to emit character inputs.
         ImVector!(char) TempBuffer; /// Temporary text buffer
         char[64] TempKeychordName;
-        // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
-        //int ActiveIdMouseButton : 8;
-        int bitfield_0;
-        @property int ActiveIdMouseButton() { return GetValue!int(bitfield_0, 0, 8); }
-        @property void ActiveIdMouseButton(int aValue) { bitfield_0 = SetValue(bitfield_0, 0, 8, aValue); };
-        static assert((bitfield_0.sizeof * 8) >= 8.sizeof);
     }
 
     /// [Internal] sizeof() ~ 112
@@ -4440,7 +4440,6 @@ extern (C) {
         ImS8 NavLayerCurrent; /// ImGuiNavLayer in 1 byte
         ImU8 AutoFitQueue; /// Queue of 8 values for the next 8 frames to request auto-fit
         ImU8 CannotSkipItemsQueue; /// Queue of 8 values for the next 8 frames to disable Clipped/SkipItem
-        ImU8 SortDirectionsAvailList; /// Ordered list of available sort directions (2-bits each, total 8-bits)
         // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
         //ImU8 SortDirection : 2; /// ImGuiSortDirection_Ascending or ImGuiSortDirection_Descending
         //ImU8 SortDirectionsAvailCount : 2; /// Number of available sort directions (0 to 3)
@@ -4453,6 +4452,7 @@ extern (C) {
         @property ImU8 SortDirectionsAvailMask() { return GetValue!ImU8(bitfield_0, 4, 4); }
         @property void SortDirectionsAvailMask(ImU8 aValue) { bitfield_0 = SetValue(bitfield_0, 4, 4, aValue); };
         static assert((bitfield_0.sizeof * 8) >= 8.sizeof);
+        ImU8 SortDirectionsAvailList; /// Ordered list of available sort directions (2-bits each, total 8-bits)
     }
 
     /// Sorting specifications for a table (often handling sort specs for a single column, occasionally more)
