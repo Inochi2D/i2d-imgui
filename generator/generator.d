@@ -1167,16 +1167,16 @@ void write_structs(code_writer codeWriter, JSONValue struct_definitions, JSONVal
             else if (hasBitfield)
             {
                 writeln(structName ~ " has an accumulated field that takes " ~ to!string(accumulatedBits) ~ " bits!");
-                hasBitfield = false;
-                accumulatedBits = 0;
 
                 if (bitfield_above_comment.length != 0)
                     codeWriter.put_lines(bitfield_above_comment);
 
                 codeWriter.put_lines(format("%s %s;", bitfield_typeName, bitfield_objectName));
 
-                codeWriter.put_lines(format("static assert((%s.sizeof * 8) >= %d.sizeof);\n", bitfield_typeName, accumulatedBits));
+                codeWriter.put_lines(format("static assert((%s.sizeof * 8) >= %d.sizeof);\n", bitfield_objectName, accumulatedBits));
                 
+                hasBitfield = false;
+                accumulatedBits = 0;
                 bitfield_typeName = "";
                 bitfield_objectName = "";
                 bitfield_above_comment = "";

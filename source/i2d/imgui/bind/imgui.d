@@ -1920,7 +1920,7 @@ extern (C) {
         // This is a bitfield, we cannot replicate this in the D binding.
         //ImGuiDataType DataType : 8;
         ImGuiDataType bitfield_0;
-        static assert((ImGuiDataType.sizeof * 8) >= 0.sizeof);
+        static assert((bitfield_0.sizeof * 8) >= 8.sizeof);
         char[57] Desc; /// Arbitrarily sized buffer to hold a result (FIXME: could replace Results[] with a chunk stream?) FIXME: Now that we added CTRL+C this should be fixed.
     }
 
@@ -2064,7 +2064,7 @@ extern (C) {
         //ImGuiCond SetWindowCollapsedAllowFlags : 8; /// store acceptable condition flags for SetNextWindowCollapsed() use.
         //ImGuiCond SetWindowDockAllowFlags : 8; /// store acceptable condition flags for SetNextWindowDock() use.
         ImGuiCond bitfield_0;
-        static assert((ImGuiCond.sizeof * 8) >= 0.sizeof);
+        static assert((bitfield_0.sizeof * 8) >= 32.sizeof);
         ImVec2 SetWindowPosVal; /// store window position when using a non-zero Pivot (position set needs to be processed when we know the window size)
         ImVec2 SetWindowPosPivot; /// store window pivot for positioning. ImVec2(0, 0) when positioning from top-left corner; ImVec2(0.5f, 0.5f) for centering; ImVec2(1, 1) for bottom right.
         ImVector!(ImGuiID) IDStack; /// ID stack. ID are hashes seeded with the value at the top of the stack. (In theory this should be in the TempData structure)
@@ -2115,7 +2115,7 @@ extern (C) {
         //bool DockTabIsVisible : 1; /// Is our window visible this frame? ~~ is the corresponding tab selected?
         //bool DockTabWantClose : 1;
         bool bitfield_1;
-        static assert((bool.sizeof * 8) >= 0.sizeof);
+        static assert((bitfield_1.sizeof * 8) >= 4.sizeof);
         short DockOrder; /// Order of the last time the window was visible within its DockNode. This is used to reorder windows that are reappearing on the same frame. Same value between windows that were active and windows that were none are possible.
         ImGuiWindowDockStyle DockStyle;
         ImGuiDockNode* DockNode; /// Which node are we docked into. Important: Prefer testing DockIsActive in many cases as this will still be set when the dock node is hidden.
@@ -2195,7 +2195,7 @@ extern (C) {
         //ImGuiTableRowFlags RowFlags : 16; /// Current row flags, see ImGuiTableRowFlags_
         //ImGuiTableRowFlags LastRowFlags : 16;
         ImGuiTableRowFlags bitfield_0;
-        static assert((ImGuiTableRowFlags.sizeof * 8) >= 0.sizeof);
+        static assert((bitfield_0.sizeof * 8) >= 32.sizeof);
         int RowBgColorCounter; /// Counter for alternating background colors (can be fast-forwarded by e.g clipper), not same as CurrentRow because header rows typically don't increase this.
         ImU32[2] RowBgColor; /// Background color override for current row.
         ImU32 BorderColorStrong;
@@ -2370,7 +2370,7 @@ extern (C) {
         //uint SourceIdx : 4; /// Index of source in parent font
         //uint Codepoint : 26; /// 0x0000..0x10FFFF
         uint bitfield_0;
-        static assert((uint.sizeof * 8) >= 0.sizeof);
+        static assert((bitfield_0.sizeof * 8) >= 32.sizeof);
         float AdvanceX; /// Horizontal distance to advance cursor/layout position.
         float X0; /// Glyph corners. Offsets from current cursor/layout position.
         float Y0; /// Glyph corners. Offsets from current cursor/layout position.
@@ -2402,7 +2402,7 @@ extern (C) {
         // This is a bitfield, we cannot replicate this in the D binding.
         //ImU32 Count : 8; /// 1+
         ImU32 bitfield_0;
-        static assert((ImU32.sizeof * 8) >= 0.sizeof);
+        static assert((bitfield_0.sizeof * 8) >= 8.sizeof);
         ImGuiDataType DataType;
     }
 
@@ -2548,7 +2548,7 @@ extern (C) {
         // This is a bitfield, we cannot replicate this in the D binding.
         //ImU8 SortDirection : 2;
         ImU8 bitfield_0;
-        static assert((ImU8.sizeof * 8) >= 0.sizeof);
+        static assert((bitfield_0.sizeof * 8) >= 2.sizeof);
         ImS8 IsEnabled; /// "Visible" in ini file
     }
 
@@ -2949,7 +2949,7 @@ extern (C) {
         //uint WantDestroy : 1; /// 0  ///     /// Queued for destroy
         //uint LockLoadingFallback : 1; /// 0  ///     //
         uint bitfield_0;
-        static assert((uint.sizeof * 8) >= 0.sizeof);
+        static assert((bitfield_0.sizeof * 8) >= 28.sizeof);
         int LastUsedFrame; /// 4     ///     /// Record of that time this was bounds
         ImGuiID BakedId; /// 4     //
         ImFont* ContainerFont; /// 4-8   /// in  /// Parent font
@@ -3512,7 +3512,7 @@ extern (C) {
         // This is a bitfield, we cannot replicate this in the D binding.
         //ImGuiKeyChord KeyMods : 16; /// Latched key-mods for box-select logic.
         ImGuiKeyChord bitfield_0;
-        static assert((ImGuiKeyChord.sizeof * 8) >= 0.sizeof);
+        static assert((bitfield_0.sizeof * 8) >= 16.sizeof);
         ImVec2 StartPosRel; /// Start position in window-contents relative space (to support scrolling)
         ImVec2 EndPosRel; /// End position in window-contents relative space
         ImVec2 ScrollAccum; /// Scrolling accumulator (to behave at high-frame spaces)
@@ -3559,7 +3559,7 @@ extern (C) {
         //ImGuiDataAuthority AuthorityForSize : 3;
         //ImGuiDataAuthority AuthorityForViewport : 3;
         ImGuiDataAuthority bitfield_0;
-        static assert((ImGuiDataAuthority.sizeof * 8) >= 0.sizeof);
+        static assert((bitfield_0.sizeof * 8) >= 9.sizeof);
         bool IsVisible; /// Set to false when the node is hidden (usually disabled as it has no active window)
     }
 
@@ -3989,7 +3989,7 @@ extern (C) {
         // This is a bitfield, we cannot replicate this in the D binding.
         //int ActiveIdMouseButton : 8;
         int bitfield_0;
-        static assert((int.sizeof * 8) >= 0.sizeof);
+        static assert((bitfield_0.sizeof * 8) >= 8.sizeof);
         ImVec2 ActiveIdClickOffset; /// Clicked offset from upper-left corner, if applicable (currently only set by ButtonBehavior)
         ImGuiWindow* ActiveIdWindow;
         ImGuiInputSource ActiveIdSource; /// Activating source: ImGuiInputSource_Mouse OR ImGuiInputSource_Keyboard OR ImGuiInputSource_Gamepad
@@ -4319,7 +4319,7 @@ extern (C) {
         //ImU8 SortDirectionsAvailCount : 2; /// Number of available sort directions (0 to 3)
         //ImU8 SortDirectionsAvailMask : 4; /// Mask of available sort directions (1-bit each)
         ImU8 bitfield_0;
-        static assert((ImU8.sizeof * 8) >= 0.sizeof);
+        static assert((bitfield_0.sizeof * 8) >= 8.sizeof);
         ImU8 SortDirectionsAvailList; /// Ordered list of available sort directions (2-bits each, total 8-bits)
     }
 
@@ -4343,7 +4343,7 @@ extern (C) {
         //int TargetIndex : 20; /// When Used: ImFontAtlasRectId -> into Rects[]. When unused: index to next unused RectsIndex[] slot to consume free-list.
         //int Generation : 10; /// Increased each time the entry is reused for a new rectangle.
         int bitfield_0;
-        static assert((int.sizeof * 8) >= 0.sizeof);
+        static assert((bitfield_0.sizeof * 8) >= 30.sizeof);
         uint IsUsed;
     }
 
