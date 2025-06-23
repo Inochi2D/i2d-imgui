@@ -2,6 +2,8 @@ module i2d.imgui.bind.imgui;
 
 import std.algorithm;
 
+import std.traits;
+
 import core.stdc.stdio;
 
 import core.stdc.stdarg;
@@ -9,6 +11,33 @@ import core.stdc.stdarg;
 import core.stdc.string;
 
 extern (C) {
+    
+    tType GetBitmask(tType)(ubyte accumulatedBits, ubyte numberOfBits)
+    {
+        OriginalType!tType blank = 0;
+        for (ubyte i = accumulatedBits; i < (accumulatedBits + numberOfBits); ++i)
+        {
+            blank = cast(OriginalType!tType)(blank ^ (1 << i));
+        }
+        return cast(tType)blank;
+    }
+    
+    tType GetValue(tType)(tType aBitField, ubyte accumulatedBits, ubyte numberOfBits) {
+        tType bitmask = GetBitmask!tType(accumulatedBits, numberOfBits);
+        return (aBitField & bitmask) >> accumulatedBits;
+    }
+    
+    tType SetValue(tType)(tType aBitField, ubyte accumulatedBits, ubyte numberOfBits, tType aValue) {
+        return cast(tType)((aBitField & ~GetBitmask!tType(accumulatedBits, numberOfBits)) | (aValue << accumulatedBits));
+    }
+    
+    alias stbrp_coord = int;
+    struct stbrp_node
+    {
+       stbrp_coord  x,y;
+       stbrp_node  *next;
+    };
+    alias ImFontAtlasRectId = int;
     alias ImS16 = short;
     alias ImU32 = uint;
     alias ImGuiSizeCallback = void     function(ImGuiSizeCallbackData* data);
@@ -17,7 +46,7 @@ extern (C) {
     alias ImU64 = ulong;
     alias ImGuiID = uint;
     alias ImGuiTableDrawChannelIdx = ImU16;
-    alias ImWchar = ImWchar16;
+    alias ImWchar = ImWchar32;
     alias ImGuiInputTextCallback = int      function(ImGuiInputTextCallbackData* data);
     alias ImDrawIdx = ushort;
     alias ImPoolIdx = int;
@@ -43,6 +72,80 @@ extern (C) {
     alias ImBitArrayForNamedKeys = ImBitArray!(ImGuiKey.NamedKey_COUNT,-ImGuiKey.NamedKey_BEGIN);
     alias ImBitArrayPtr = ImU32*;
     alias ImGuiMemAllocFunc = void*    function(size_t sz, void* user_data);
+    alias stbrp_node_im = stbrp_node;
+    
+    size_t imMemAlign(size_t size, size_t alignment)
+    {
+        return (size + alignment - 1) & ~(alignment - 1);
+    }
+    
+    struct ImStableVector(tType, size_t BLOCK_SIZE) {
+        int Size;
+        int Capacity;
+        ImVector!(tType*) Blocks;
+    
+        ~this()
+        {
+            for (int n = 0; n < Capacity; n++)
+            {
+                igMemFree(Blocks[n]);
+            }
+        }
+    
+        void clear()
+        {
+            Size = 0;
+            Capacity = 0;
+            Blocks.clear_delete();
+        }
+    
+        void resize(int new_size)
+        { 
+            if (new_size > Capacity) 
+            {
+                reserve(cast(int)new_size); 
+                Size = new_size; 
+            }
+        }
+    
+        void reserve(int new_cap)
+        {
+            new_cap = cast(int)imMemAlign(new_cap, cast(size_t)BLOCK_SIZE);
+            int old_count = cast(int)(Capacity / BLOCK_SIZE);
+            int new_count = cast(int)(new_cap / BLOCK_SIZE);
+            if (new_count <= old_count)
+            {
+                return;
+            }
+    
+            Blocks.resize(new_count);
+            for (int n = old_count; n < new_count; n++)
+            {
+                Blocks[n] = cast(tType*)igMemAlloc(tType.sizeof * BLOCK_SIZE);
+            }
+            Capacity = new_cap;
+        }
+        
+        ref auto opIndex(size_t index)
+        {
+            return Blocks[index / BLOCK_SIZE][index % BLOCK_SIZE];
+        }
+    
+        ref auto push_back(const(tType) v) 
+        {
+            int i = Size;
+            assert(i >= 0);
+            if (Size == Capacity)
+            {
+                reserve(cast(int)(Capacity + BLOCK_SIZE));
+            }  
+            
+            void* ptr = &Blocks[i / BLOCK_SIZE][i % BLOCK_SIZE]; 
+            memcpy(ptr, &v, v.sizeof); 
+            Size++; 
+            return cast(tType*)ptr;        
+        }
+    }
     
     struct ImVector(tType) {
         int Size;
@@ -51,6 +154,27 @@ extern (C) {
     
         import core.stdc.string;
     
+        // Important: never called automatically! always explicit.
+        void clear_delete()() if (isPointer!(tType))
+        { 
+            for (int n = 0; n < Size; n++) {
+                destroy(Data[n]); 
+                igMemFree(cast(void*)Data[n]);
+            }
+                
+            clear();
+        }
+    
+        // Important: never called automatically! always explicit.
+        void clear_destruct()
+        { 
+            for (int n = 0; n < Size; n++) 
+            {
+                destroy(Data[n]);
+            }
+    
+            clear(); 
+        }
     
         bool empty() const                       
         {
@@ -377,6 +501,23 @@ extern (C) {
         ImPoolIdx FreeIdx;
     }
 
+    /// Flags for internal's BeginColumns(). This is an obsolete API. Prefer using BeginTable() nowadays!
+    enum ImGuiOldColumnFlags {
+        None = 0,
+        NoBorder = 1, /// Disable column dividers
+        NoResize = 2, /// Disable resizing columns when clicking on the dividers
+        NoPreserveWidths = 4, /// Disable column width preservation when adjusting columns
+        NoForceWithinWindow = 8, /// Disable forcing columns to fit within window
+        GrowParentContentsSize = 16, /// Restore pre-1.51 behavior of extending the parent window contents size but _without affecting the columns width at all_. Will eventually remove.
+    }
+
+    /// FIXME: this is in development, not exposed/functional as a generic feature yet.
+    /// Horizontal/Vertical enums are fixed to 0/1 so they may be used to index ImVec2
+    enum ImGuiLayoutType {
+        Horizontal = 0,
+        Vertical = 1,
+    }
+
     /// Enum for ImGui::TableSetBgColor()
     /// Background colors are rendering in 3 layers:
     ///  - Layer 0: draw with RowBg0 color if set, otherwise draw with ColumnBg0 if set.
@@ -391,13 +532,6 @@ extern (C) {
         RowBg0 = 1, /// Set row background color 0 (generally used for background, automatically set when ImGuiTableFlags_RowBg is used)
         RowBg1 = 2, /// Set row background color 1 (generally used for selection marking)
         CellBg = 3, /// Set cell background color (top-most color)
-    }
-
-    /// FIXME: this is in development, not exposed/functional as a generic feature yet.
-    /// Horizontal/Vertical enums are fixed to 0/1 so they may be used to index ImVec2
-    enum ImGuiLayoutType {
-        Horizontal = 0,
-        Vertical = 1,
     }
 
     enum ImGuiSeparatorFlags {
@@ -673,8 +807,6 @@ extern (C) {
         NoKeyboard = 64, /// Instruct dear imgui to disable keyboard inputs and interactions. This is done by ignoring keyboard events and clearing existing states.
         DockingEnable = 128, /// Docking enable flags.
         ViewportsEnable = 1024, /// Viewport enable flags (require both ImGuiBackendFlags_PlatformHasViewports + ImGuiBackendFlags_RendererHasViewports set by the respective backends)
-        DpiEnableScaleViewports = 16384, /// [BETA: Don't use] FIXME-DPI: Reposition and resize imgui windows when the DpiScale of a viewport changed (mostly useful for the main viewport hosting other window). Note that resizing the main window itself is up to your application.
-        DpiEnableScaleFonts = 32768, /// [BETA: Don't use] FIXME-DPI: Request bitmap-scaled fonts to match DpiScale. This is a very low-quality workaround. The correct way to handle DPI is _currently_ to replace the atlas and/or fonts in the Platform_OnChangedViewport callback, but this is all early work in progress.
         IsSRGB = 1048576, /// Application is SRGB-aware.
         IsTouchScreen = 2097152, /// Application is using a touch screen instead of a mouse.
     }
@@ -709,8 +841,8 @@ extern (C) {
 
     /// Extend ImGuiDataType_
     enum ImGuiDataTypeI : ImGuiDataType {
-        Pointer = cast(ImGuiDataType)13,
-        ID = cast(ImGuiDataType)14,
+        Pointer = cast(ImGuiDataType)12,
+        ID = cast(ImGuiDataType)13,
     }
 
     /// Flags for ImGui::TreeNodeEx(), ImGui::CollapsingHeader*()
@@ -732,8 +864,11 @@ extern (C) {
         SpanLabelWidth = 8192, /// Narrow hit box + narrow hovering highlight, will only cover the label text.
         SpanAllColumns = 16384, /// Frame will span all columns of its container table (label will still fit in current column)
         LabelSpanAllColumns = 32768, /// Label will span all columns of its container table
-        NavLeftJumpsBackHere = 131072, /// (WIP) Nav: left direction may move to this TreeNode() from any of its child (items submitted between TreeNode and TreePop)
+        NavLeftJumpsToParent = 131072, /// Nav: left arrow moves back to parent. This is processed in TreePop() when there's an unfullfilled Left nav request remaining.
         CollapsingHeader = 26,
+        DrawLinesNone = 262144, /// No lines drawn
+        DrawLinesFull = 524288, /// Horizontal lines to child nodes. Vertical line drawn down to TreePop() position: cover full contents. Faster (for large trees).
+        DrawLinesToNodes = 1048576, /// Horizontal lines to child nodes. Vertical line drawn down to bottom-most child node. Slower (for large trees).
     }
 
     /// Flags for ImGui::Begin()
@@ -830,6 +965,15 @@ extern (C) {
         DataTypeMask_ = 25165824,
         PickerMask_ = 100663296,
         InputMask_ = 402653184,
+    }
+
+    /// Status of a texture to communicate with Renderer Backend.
+    enum ImTextureStatus {
+        OK = 0,
+        Destroyed = 1, /// Backend destroyed the texture.
+        WantCreate = 2, /// Requesting backend to create the texture. Set status OK when done.
+        WantUpdates = 3, /// Requesting backend to update specific blocks of pixels (write to texture portions which have never been used before). Set status OK when done.
+        WantDestroy = 4, /// Requesting backend to destroy the texture. Set status to Destroyed when done.
     }
 
     enum ImGuiContextHookType {
@@ -1014,49 +1158,50 @@ extern (C) {
         KeypadEqual = 628,
         AppBack = 629, /// Available on some keyboard/mouses. Often referred as "Browser Back"
         AppForward = 630,
-        GamepadStart = 631, /// Menu (Xbox)      + (Switch)   Start/Options (PS)
-        GamepadBack = 632, /// View (Xbox)      - (Switch)   Share (PS)
-        GamepadFaceLeft = 633, /// X (Xbox)         Y (Switch)   Square (PS)        /// Tap: Toggle Menu. Hold: Windowing mode (Focus/Move/Resize windows)
-        GamepadFaceRight = 634, /// B (Xbox)         A (Switch)   Circle (PS)        /// Cancel / Close / Exit
-        GamepadFaceUp = 635, /// Y (Xbox)         X (Switch)   Triangle (PS)      /// Text Input / On-screen Keyboard
-        GamepadFaceDown = 636, /// A (Xbox)         B (Switch)   Cross (PS)         /// Activate / Open / Toggle / Tweak
-        GamepadDpadLeft = 637, /// D-pad Left                                       /// Move / Tweak / Resize Window (in Windowing mode)
-        GamepadDpadRight = 638, /// D-pad Right                                      /// Move / Tweak / Resize Window (in Windowing mode)
-        GamepadDpadUp = 639, /// D-pad Up                                         /// Move / Tweak / Resize Window (in Windowing mode)
-        GamepadDpadDown = 640, /// D-pad Down                                       /// Move / Tweak / Resize Window (in Windowing mode)
-        GamepadL1 = 641, /// L Bumper (Xbox)  L (Switch)   L1 (PS)            /// Tweak Slower / Focus Previous (in Windowing mode)
-        GamepadR1 = 642, /// R Bumper (Xbox)  R (Switch)   R1 (PS)            /// Tweak Faster / Focus Next (in Windowing mode)
-        GamepadL2 = 643, /// L Trig. (Xbox)   ZL (Switch)  L2 (PS) [Analog]
-        GamepadR2 = 644, /// R Trig. (Xbox)   ZR (Switch)  R2 (PS) [Analog]
-        GamepadL3 = 645, /// L Stick (Xbox)   L3 (Switch)  L3 (PS)
-        GamepadR3 = 646, /// R Stick (Xbox)   R3 (Switch)  R3 (PS)
-        GamepadLStickLeft = 647, /// [Analog]                                         /// Move Window (in Windowing mode)
-        GamepadLStickRight = 648, /// [Analog]                                         /// Move Window (in Windowing mode)
-        GamepadLStickUp = 649, /// [Analog]                                         /// Move Window (in Windowing mode)
-        GamepadLStickDown = 650, /// [Analog]                                         /// Move Window (in Windowing mode)
-        GamepadRStickLeft = 651, /// [Analog]
-        GamepadRStickRight = 652, /// [Analog]
-        GamepadRStickUp = 653, /// [Analog]
-        GamepadRStickDown = 654, /// [Analog]
-        MouseLeft = 655,
-        MouseRight = 656,
-        MouseMiddle = 657,
-        MouseX1 = 658,
-        MouseX2 = 659,
-        MouseWheelX = 660,
-        MouseWheelY = 661,
-        ReservedForModCtrl = 662,
-        ReservedForModShift = 663,
-        ReservedForModAlt = 664,
-        ReservedForModSuper = 665,
-        NamedKey_END = 666,
+        Oem102 = 631, /// Non-US backslash.
+        GamepadStart = 632, /// Menu (Xbox)      + (Switch)   Start/Options (PS)
+        GamepadBack = 633, /// View (Xbox)      - (Switch)   Share (PS)
+        GamepadFaceLeft = 634, /// X (Xbox)         Y (Switch)   Square (PS)        /// Tap: Toggle Menu. Hold: Windowing mode (Focus/Move/Resize windows)
+        GamepadFaceRight = 635, /// B (Xbox)         A (Switch)   Circle (PS)        /// Cancel / Close / Exit
+        GamepadFaceUp = 636, /// Y (Xbox)         X (Switch)   Triangle (PS)      /// Text Input / On-screen Keyboard
+        GamepadFaceDown = 637, /// A (Xbox)         B (Switch)   Cross (PS)         /// Activate / Open / Toggle / Tweak
+        GamepadDpadLeft = 638, /// D-pad Left                                       /// Move / Tweak / Resize Window (in Windowing mode)
+        GamepadDpadRight = 639, /// D-pad Right                                      /// Move / Tweak / Resize Window (in Windowing mode)
+        GamepadDpadUp = 640, /// D-pad Up                                         /// Move / Tweak / Resize Window (in Windowing mode)
+        GamepadDpadDown = 641, /// D-pad Down                                       /// Move / Tweak / Resize Window (in Windowing mode)
+        GamepadL1 = 642, /// L Bumper (Xbox)  L (Switch)   L1 (PS)            /// Tweak Slower / Focus Previous (in Windowing mode)
+        GamepadR1 = 643, /// R Bumper (Xbox)  R (Switch)   R1 (PS)            /// Tweak Faster / Focus Next (in Windowing mode)
+        GamepadL2 = 644, /// L Trig. (Xbox)   ZL (Switch)  L2 (PS) [Analog]
+        GamepadR2 = 645, /// R Trig. (Xbox)   ZR (Switch)  R2 (PS) [Analog]
+        GamepadL3 = 646, /// L Stick (Xbox)   L3 (Switch)  L3 (PS)
+        GamepadR3 = 647, /// R Stick (Xbox)   R3 (Switch)  R3 (PS)
+        GamepadLStickLeft = 648, /// [Analog]                                         /// Move Window (in Windowing mode)
+        GamepadLStickRight = 649, /// [Analog]                                         /// Move Window (in Windowing mode)
+        GamepadLStickUp = 650, /// [Analog]                                         /// Move Window (in Windowing mode)
+        GamepadLStickDown = 651, /// [Analog]                                         /// Move Window (in Windowing mode)
+        GamepadRStickLeft = 652, /// [Analog]
+        GamepadRStickRight = 653, /// [Analog]
+        GamepadRStickUp = 654, /// [Analog]
+        GamepadRStickDown = 655, /// [Analog]
+        MouseLeft = 656,
+        MouseRight = 657,
+        MouseMiddle = 658,
+        MouseX1 = 659,
+        MouseX2 = 660,
+        MouseWheelX = 661,
+        MouseWheelY = 662,
+        ReservedForModCtrl = 663,
+        ReservedForModShift = 664,
+        ReservedForModAlt = 665,
+        ReservedForModSuper = 666,
+        NamedKey_END = 667,
         ImGuiMod_None = 0,
         ImGuiMod_Ctrl = 4096, /// Ctrl (non-macOS), Cmd (macOS)
         ImGuiMod_Shift = 8192, /// Shift
         ImGuiMod_Alt = 16384, /// Option/Menu
         ImGuiMod_Super = 32768, /// Windows/Super (non-macOS), Ctrl (macOS)
         ImGuiMod_Mask_ = 61440, /// 4-bits
-        NamedKey_COUNT = 154,
+        NamedKey_COUNT = 155,
     }
 
     /// Enumeration for ImGui::SetNextWindow***(), SetWindow***(), SetNextItem***() functions
@@ -1091,11 +1236,12 @@ extern (C) {
         HasFocus = 32,
         HasBgAlpha = 64,
         HasScroll = 128,
-        HasChildFlags = 256,
-        HasRefreshPolicy = 512,
-        HasViewport = 1024,
-        HasDock = 2048,
-        HasWindowClass = 4096,
+        HasWindowFlags = 256,
+        HasChildFlags = 512,
+        HasRefreshPolicy = 1024,
+        HasViewport = 2048,
+        HasDock = 4096,
+        HasWindowClass = 8192,
     }
 
     /// Enumeration for PushStyleVar() / PopStyleVar() to temporarily modify the ImGuiStyle structure.
@@ -1129,19 +1275,22 @@ extern (C) {
         ScrollbarRounding = 19, /// float     ScrollbarRounding
         GrabMinSize = 20, /// float     GrabMinSize
         GrabRounding = 21, /// float     GrabRounding
-        TabRounding = 22, /// float     TabRounding
-        TabBorderSize = 23, /// float     TabBorderSize
-        TabBarBorderSize = 24, /// float     TabBarBorderSize
-        TabBarOverlineSize = 25, /// float     TabBarOverlineSize
-        TableAngledHeadersAngle = 26, /// float     TableAngledHeadersAngle
-        TableAngledHeadersTextAlign = 27, /// ImVec2  TableAngledHeadersTextAlign
-        ButtonTextAlign = 28, /// ImVec2    ButtonTextAlign
-        SelectableTextAlign = 29, /// ImVec2    SelectableTextAlign
-        SeparatorTextBorderSize = 30, /// float     SeparatorTextBorderSize
-        SeparatorTextAlign = 31, /// ImVec2    SeparatorTextAlign
-        SeparatorTextPadding = 32, /// ImVec2    SeparatorTextPadding
-        DockingSeparatorSize = 33, /// float     DockingSeparatorSize
-        COUNT = 34,
+        ImageBorderSize = 22, /// float     ImageBorderSize
+        TabRounding = 23, /// float     TabRounding
+        TabBorderSize = 24, /// float     TabBorderSize
+        TabBarBorderSize = 25, /// float     TabBarBorderSize
+        TabBarOverlineSize = 26, /// float     TabBarOverlineSize
+        TableAngledHeadersAngle = 27, /// float     TableAngledHeadersAngle
+        TableAngledHeadersTextAlign = 28, /// ImVec2  TableAngledHeadersTextAlign
+        TreeLinesSize = 29, /// float     TreeLinesSize
+        TreeLinesRounding = 30, /// float     TreeLinesRounding
+        ButtonTextAlign = 31, /// ImVec2    ButtonTextAlign
+        SelectableTextAlign = 32, /// ImVec2    SelectableTextAlign
+        SeparatorTextBorderSize = 33, /// float     SeparatorTextBorderSize
+        SeparatorTextAlign = 34, /// ImVec2    SeparatorTextAlign
+        SeparatorTextPadding = 35, /// ImVec2    SeparatorTextPadding
+        DockingSeparatorSize = 36, /// float     DockingSeparatorSize
+        COUNT = 37,
     }
 
     /// Extend ImGuiInputTextFlags_
@@ -1176,6 +1325,7 @@ extern (C) {
         AllowOverlap = cast(ImGuiItemFlags)16384, /// false     /// Allow being overlapped by another widget. Not-hovered to Hovered transition deferred by a frame.
         NoNavDisableMouseHover = cast(ImGuiItemFlags)32768, /// false     /// Nav keyboard/gamepad mode doesn't disable hover highlight (behave as if NavHighlightItemUnderNav==false).
         NoMarkEdited = cast(ImGuiItemFlags)65536, /// false     /// Skip calling MarkItemEdited()
+        NoFocus = cast(ImGuiItemFlags)131072, /// false     /// [EXPERIMENTAL: Not very well specced] Clicking doesn't take focus. Automatically sets ImGuiButtonFlags_NoFocus + ImGuiButtonFlags_NoNavFocus in ButtonBehavior().
         Inputable = cast(ImGuiItemFlags)1048576, /// false     /// [WIP] Auto-activate input mode when tab focused. Currently only used and supported by a few items before it becomes a generic feature.
         HasSelectionUserData = cast(ImGuiItemFlags)2097152, /// false     /// Set by SetNextItemSelectionUserData()
         IsMultiSelect = cast(ImGuiItemFlags)4194304, /// false     /// Set by SetNextItemSelectionUserData()
@@ -1197,6 +1347,7 @@ extern (C) {
         HasMouseCursors = 2, /// Backend Platform supports honoring GetMouseCursor() value to change the OS cursor shape.
         HasSetMousePos = 4, /// Backend Platform supports io.WantSetMousePos requests to reposition the OS mouse position (only used if io.ConfigNavMoveSetMousePos is set).
         RendererHasVtxOffset = 8, /// Backend Renderer supports ImDrawCmd::VtxOffset. This enables output of large meshes (64K+ vertices) while still using 16-bit indices.
+        RendererHasTextures = 16, /// Backend Renderer supports ImTextureData requests to create/update/destroy textures. This enables incremental texture updates and texture reloads.
         PlatformHasViewports = 1024, /// Backend Platform supports multiple viewports.
         HasMouseHoveredViewport = 2048, /// Backend Platform supports calling io.AddMouseViewportEvent() with the viewport under the mouse. IF POSSIBLE, ignore viewports with the ImGuiViewportFlags_NoInputs flag (Win32 backend, GLFW 3.30+ backend can do this, SDL backend cannot). If this cannot be done, Dear ImGui needs to use a flawed heuristic to find the viewport under.
         RendererHasViewports = 4096, /// Backend Renderer supports multiple viewports.
@@ -1237,6 +1388,13 @@ extern (C) {
         COUNT = 2,
     }
 
+    /// We intentionally support a limited amount of texture formats to limit burden on CPU-side code and extension.
+    /// Most standard backends only support RGBA32 but we provide a single channel option for low-resource/embedded systems.
+    enum ImTextureFormat {
+        RGBA32 = 0, /// 4 components per pixel, each is unsigned 8-bit. Total size = TexWidth * TexHeight * 4
+        Alpha8 = 1, /// 1 component per pixel, each is unsigned 8-bit. Total size = TexWidth * TexHeight
+    }
+
     enum ImGuiDockNodeState {
         Unknown = 0,
         HostWindowHiddenBecauseSingleWindow = 1,
@@ -1268,6 +1426,7 @@ extern (C) {
         NoHoveredOnFocus = cast(ImGuiButtonFlags)524288, /// don't report as hovered when nav focus is on this item
         NoSetKeyOwner = cast(ImGuiButtonFlags)1048576, /// don't set key/input owner on the initial click (note: mouse buttons are keys! often, the key in question will be ImGuiKey_MouseLeft!)
         NoTestKeyOwner = cast(ImGuiButtonFlags)2097152, /// don't test key/input owner when polling the key (note: mouse buttons are keys! often, the key in question will be ImGuiKey_MouseLeft!)
+        NoFocus = cast(ImGuiButtonFlags)4194304, /// [EXPERIMENTAL: Not very well specced]. Don't focus parent window when clicking.
         PressedOnMask_ = cast(ImGuiButtonFlags)1008,
         PressedOnDefault_ = cast(ImGuiButtonFlags)32,
     }
@@ -1411,9 +1570,11 @@ extern (C) {
 
     /// Extend ImGuiTreeNodeFlags_
     enum ImGuiTreeNodeFlagsI : ImGuiTreeNodeFlags {
+        NoNavFocus = cast(ImGuiTreeNodeFlags)134217728, /// Don't claim nav focus when interacting with this item (#8551)
         ClipLabelForTrailingButton = cast(ImGuiTreeNodeFlags)268435456, /// FIXME-WIP: Hard-coded for CollapsingHeader()
         UpsideDownArrow = cast(ImGuiTreeNodeFlags)536870912, /// FIXME-WIP: Turn Down arrow into an Up arrow, for reversed trees (#6517)
         OpenOnMask_ = cast(ImGuiTreeNodeFlags)192,
+        DrawLinesMask_ = cast(ImGuiTreeNodeFlags)1835008,
     }
 
     /// Flags for ImDrawList functions
@@ -1528,32 +1689,34 @@ extern (C) {
         ResizeGrip = 30, /// Resize grip in lower-right and lower-left corners of windows.
         ResizeGripHovered = 31,
         ResizeGripActive = 32,
-        TabHovered = 33, /// Tab background, when hovered
-        Tab = 34, /// Tab background, when tab-bar is focused & tab is unselected
-        TabSelected = 35, /// Tab background, when tab-bar is focused & tab is selected
-        TabSelectedOverline = 36, /// Tab horizontal overline, when tab-bar is focused & tab is selected
-        TabDimmed = 37, /// Tab background, when tab-bar is unfocused & tab is unselected
-        TabDimmedSelected = 38, /// Tab background, when tab-bar is unfocused & tab is selected
-        TabDimmedSelectedOverline = 39, //..horizontal overline, when tab-bar is unfocused & tab is selected
-        DockingPreview = 40, /// Preview overlay color when about to docking something
-        DockingEmptyBg = 41, /// Background color for empty node (e.g. CentralNode with no window docked into it)
-        PlotLines = 42,
-        PlotLinesHovered = 43,
-        PlotHistogram = 44,
-        PlotHistogramHovered = 45,
-        TableHeaderBg = 46, /// Table header background
-        TableBorderStrong = 47, /// Table outer and header borders (prefer using Alpha=1.0 here)
-        TableBorderLight = 48, /// Table inner borders (prefer using Alpha=1.0 here)
-        TableRowBg = 49, /// Table row background (even rows)
-        TableRowBgAlt = 50, /// Table row background (odd rows)
-        TextLink = 51, /// Hyperlink color
-        TextSelectedBg = 52,
-        DragDropTarget = 53, /// Rectangle highlighting a drop target
-        NavCursor = 54, /// Color of keyboard/gamepad navigation cursor/rectangle, when visible
-        NavWindowingHighlight = 55, /// Highlight window when using CTRL+TAB
-        NavWindowingDimBg = 56, /// Darken/colorize entire screen behind the CTRL+TAB window list, when active
-        ModalWindowDimBg = 57, /// Darken/colorize entire screen behind a modal window, when one is active
-        COUNT = 58,
+        InputTextCursor = 33, /// InputText cursor/caret
+        TabHovered = 34, /// Tab background, when hovered
+        Tab = 35, /// Tab background, when tab-bar is focused & tab is unselected
+        TabSelected = 36, /// Tab background, when tab-bar is focused & tab is selected
+        TabSelectedOverline = 37, /// Tab horizontal overline, when tab-bar is focused & tab is selected
+        TabDimmed = 38, /// Tab background, when tab-bar is unfocused & tab is unselected
+        TabDimmedSelected = 39, /// Tab background, when tab-bar is unfocused & tab is selected
+        TabDimmedSelectedOverline = 40, //..horizontal overline, when tab-bar is unfocused & tab is selected
+        DockingPreview = 41, /// Preview overlay color when about to docking something
+        DockingEmptyBg = 42, /// Background color for empty node (e.g. CentralNode with no window docked into it)
+        PlotLines = 43,
+        PlotLinesHovered = 44,
+        PlotHistogram = 45,
+        PlotHistogramHovered = 46,
+        TableHeaderBg = 47, /// Table header background
+        TableBorderStrong = 48, /// Table outer and header borders (prefer using Alpha=1.0 here)
+        TableBorderLight = 49, /// Table inner borders (prefer using Alpha=1.0 here)
+        TableRowBg = 50, /// Table row background (even rows)
+        TableRowBgAlt = 51, /// Table row background (odd rows)
+        TextLink = 52, /// Hyperlink color
+        TextSelectedBg = 53, /// Selected text inside an InputText
+        TreeLines = 54, /// Tree node hierarchy outlines when using ImGuiTreeNodeFlags_DrawLines
+        DragDropTarget = 55, /// Rectangle highlighting a drop target
+        NavCursor = 56, /// Color of keyboard/gamepad navigation cursor/rectangle, when visible
+        NavWindowingHighlight = 57, /// Highlight window when using CTRL+TAB
+        NavWindowingDimBg = 58, /// Darken/colorize entire screen behind the CTRL+TAB window list, when active
+        ModalWindowDimBg = 59, /// Darken/colorize entire screen behind a modal window, when one is active
+        COUNT = 60,
     }
 
     /// Flags for InvisibleButton() [extended in imgui_internal.h]
@@ -1617,8 +1780,10 @@ extern (C) {
         ResizeNESW = 5, /// When hovering over the bottom-left corner of a window
         ResizeNWSE = 6, /// When hovering over the bottom-right corner of a window
         Hand = 7, /// (Unused by Dear ImGui functions. Use for e.g. hyperlinks)
-        NotAllowed = 8, /// When hovering something with disallowed interaction. Usually a crossed circle.
-        COUNT = 9,
+        Wait = 8, /// When waiting for something to process/load.
+        Progress = 9, /// When waiting for something to process/load, but application is still interactive.
+        NotAllowed = 10, /// When hovering something with disallowed interaction. Usually a crossed circle.
+        COUNT = 11,
     }
 
     /// Flags for BeginMultiSelect()
@@ -1716,6 +1881,16 @@ extern (C) {
         AnyPopup = 3072,
     }
 
+    /// Font flags
+    /// (in future versions as we redesign font loading API, this will become more important and better documented. for now please consider this as internal/advanced use)
+    enum ImFontFlags {
+        None = 0,
+        DefaultToLegacySize = 1, /// Legacy compatibility: make PushFont() calls without explicit size use font->LegacySize instead of current font size.
+        NoLoadError = 2, /// Disable throwing an error/assert when calling AddFontXXX() with missing file/data. Calling code is expected to check AddFontXXX() return value.
+        NoLoadGlyphs = 4, /// [Internal] Disable loading new glyphs.
+        LockBakedSizes = 8, /// [Internal] Disable loading new baked sizes, disable garbage collecting current ones. e.g. if you want to lock a font to a single size. Important: if you use this to preload given sizes, consider the possibility of multiple font density used on Retina display.
+    }
+
     enum ImGuiActivateFlags {
         None = 0,
         PreferInput = 1, /// Favor activation that requires keyboard text input (e.g. for Slider/Drag). Default for Enter key.
@@ -1723,16 +1898,6 @@ extern (C) {
         TryToPreserveState = 4, /// Request widget to preserve state if it can (e.g. InputText will try to preserve cursor/selection)
         FromTabbing = 8, /// Activation requested by a tabbing request
         FromShortcut = 16, /// Activation requested by an item shortcut via SetNextItemShortcut() function.
-    }
-
-    /// Flags for internal's BeginColumns(). This is an obsolete API. Prefer using BeginTable() nowadays!
-    enum ImGuiOldColumnFlags {
-        None = 0,
-        NoBorder = 1, /// Disable column dividers
-        NoResize = 2, /// Disable resizing columns when clicking on the dividers
-        NoPreserveWidths = 4, /// Disable column width preservation when adjusting columns
-        NoForceWithinWindow = 8, /// Disable forcing columns to fit within window
-        GrowParentContentsSize = 16, /// Restore pre-1.51 behavior of extending the parent window contents size but _without affecting the columns width at all_. Will eventually remove.
     }
 
     /// Flags for ImGui::IsItemHovered(), ImGui::IsWindowHovered()
@@ -1771,7 +1936,12 @@ extern (C) {
         ImGuiID ID;
         ImS8 QueryFrameCount; /// >= 1: Query in progress
         bool QuerySuccess; /// Obtained result from DebugHookIdInfo()
-        ImGuiDataType DataType;
+        // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
+        //ImGuiDataType DataType : 8;
+        ImGuiDataType bitfield_0;
+        @property ImGuiDataType DataType() { return GetValue!ImGuiDataType(bitfield_0, 0, 8); }
+        @property void DataType(ImGuiDataType aValue) { bitfield_0 = SetValue(bitfield_0, 0, 8, aValue); };
+        static assert((bitfield_0.sizeof * 8) >= 8.sizeof);
         char[57] Desc; /// Arbitrarily sized buffer to hold a result (FIXME: could replace Results[] with a chunk stream?) FIXME: Now that we added CTRL+C this should be fixed.
     }
 
@@ -1781,6 +1951,7 @@ extern (C) {
         ImGuiLastItemData ParentLastItemDataBackup;
         ImGuiErrorRecoveryState StackSizesInBegin; /// Store size of various stacks for asserting
         bool DisabledOverrideReenable; /// Non-child window override disabled flag
+        float DisabledOverrideReenableAlphaBackup;
     }
 
     /// Routing table entry (sizeof() == 16 bytes)
@@ -1878,6 +2049,8 @@ extern (C) {
         ImVec2 ScrollbarSizes; /// Size taken by each scrollbars on their smaller axis. Pay attention! ScrollbarSizes.x == width of the vertical scrollbar, ScrollbarSizes.y = height of the horizontal scrollbar.
         bool ScrollbarX; /// Are scrollbars visible?
         bool ScrollbarY; /// Are scrollbars visible?
+        bool ScrollbarXStabilizeEnabled; /// Was ScrollbarX previously auto-stabilized?
+        ImU8 ScrollbarXStabilizeToggledHistory; /// Used to stabilize scrollbar visibility in case of feedback loops
         bool ViewportOwned;
         bool Active; /// Set to true on Begin(), unless Collapsed
         bool WasActive;
@@ -1906,10 +2079,21 @@ extern (C) {
         ImS8 HiddenFramesCannotSkipItems; /// Hide the window for N frames while allowing items to be submitted so we can measure their size
         ImS8 HiddenFramesForRenderOnly; /// Hide the window until frame N at Render() time only
         ImS8 DisableInputsFrames; /// Disable window interactions for N frames
-        ImGuiCond SetWindowPosAllowFlags; /// store acceptable condition flags for SetNextWindowPos() use.
-        ImGuiCond SetWindowSizeAllowFlags; /// store acceptable condition flags for SetNextWindowSize() use.
-        ImGuiCond SetWindowCollapsedAllowFlags; /// store acceptable condition flags for SetNextWindowCollapsed() use.
-        ImGuiCond SetWindowDockAllowFlags; /// store acceptable condition flags for SetNextWindowDock() use.
+        // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
+        //ImGuiCond SetWindowPosAllowFlags : 8; /// store acceptable condition flags for SetNextWindowPos() use.
+        //ImGuiCond SetWindowSizeAllowFlags : 8; /// store acceptable condition flags for SetNextWindowSize() use.
+        //ImGuiCond SetWindowCollapsedAllowFlags : 8; /// store acceptable condition flags for SetNextWindowCollapsed() use.
+        //ImGuiCond SetWindowDockAllowFlags : 8; /// store acceptable condition flags for SetNextWindowDock() use.
+        ImGuiCond bitfield_0;
+        @property ImGuiCond SetWindowPosAllowFlags() { return GetValue!ImGuiCond(bitfield_0, 0, 8); }
+        @property void SetWindowPosAllowFlags(ImGuiCond aValue) { bitfield_0 = SetValue(bitfield_0, 0, 8, aValue); };
+        @property ImGuiCond SetWindowSizeAllowFlags() { return GetValue!ImGuiCond(bitfield_0, 8, 8); }
+        @property void SetWindowSizeAllowFlags(ImGuiCond aValue) { bitfield_0 = SetValue(bitfield_0, 8, 8, aValue); };
+        @property ImGuiCond SetWindowCollapsedAllowFlags() { return GetValue!ImGuiCond(bitfield_0, 16, 8); }
+        @property void SetWindowCollapsedAllowFlags(ImGuiCond aValue) { bitfield_0 = SetValue(bitfield_0, 16, 8, aValue); };
+        @property ImGuiCond SetWindowDockAllowFlags() { return GetValue!ImGuiCond(bitfield_0, 24, 8); }
+        @property void SetWindowDockAllowFlags(ImGuiCond aValue) { bitfield_0 = SetValue(bitfield_0, 24, 8, aValue); };
+        static assert((bitfield_0.sizeof * 8) >= 32.sizeof);
         ImVec2 SetWindowPosVal; /// store window position when using a non-zero Pivot (position set needs to be processed when we know the window size)
         ImVec2 SetWindowPosPivot; /// store window pivot for positioning. ImVec2(0, 0) when positioning from top-left corner; ImVec2(0.5f, 0.5f) for centering; ImVec2(1, 1) for bottom right.
         ImVector!(ImGuiID) IDStack; /// ID stack. ID are hashes seeded with the value at the top of the stack. (In theory this should be in the TempData structure)
@@ -1933,7 +2117,6 @@ extern (C) {
         ImVector!(ImGuiOldColumns) ColumnsStorage;
         float FontWindowScale; /// User scale multiplier per-window, via SetWindowFontScale()
         float FontWindowScaleParents;
-        float FontDpiScale;
         float FontRefSize; /// This is a copy of window->CalcFontSize() at the time of Begin(), trying to phase out CalcFontSize() especially as it may be called on non-current window.
         int SettingsOffset; /// Offset into SettingsWindows[] (offsets are always valid as we only grow the array from the back)
         ImDrawList* DrawList; /// == &DrawListInst (for backward compatibility reason with code using imgui_internal.h we keep this a pointer)
@@ -1954,11 +2137,22 @@ extern (C) {
         int MemoryDrawListIdxCapacity; /// Backup of last idx/vtx count, so when waking up the window we can preallocate and avoid iterative alloc/copy
         int MemoryDrawListVtxCapacity;
         bool MemoryCompacted; /// Set when window extraneous data have been garbage collected
+        // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
              /// Docking
-        bool DockIsActive; /// When docking artifacts are actually visible. When this is set, DockNode is guaranteed to be != NULL. ~~ (DockNode != NULL) && (DockNode->Windows.Size > 1).
-        bool DockNodeIsVisible;
-        bool DockTabIsVisible; /// Is our window visible this frame? ~~ is the corresponding tab selected?
-        bool DockTabWantClose;
+        //bool DockIsActive : 1; /// When docking artifacts are actually visible. When this is set, DockNode is guaranteed to be != NULL. ~~ (DockNode != NULL) && (DockNode->Windows.Size > 1).
+        //bool DockNodeIsVisible : 1;
+        //bool DockTabIsVisible : 1; /// Is our window visible this frame? ~~ is the corresponding tab selected?
+        //bool DockTabWantClose : 1;
+        bool bitfield_1;
+        @property bool DockIsActive() { return GetValue!bool(bitfield_1, 0, 1); }
+        @property void DockIsActive(bool aValue) { bitfield_1 = SetValue(bitfield_1, 0, 1, aValue); };
+        @property bool DockNodeIsVisible() { return GetValue!bool(bitfield_1, 1, 1); }
+        @property void DockNodeIsVisible(bool aValue) { bitfield_1 = SetValue(bitfield_1, 1, 1, aValue); };
+        @property bool DockTabIsVisible() { return GetValue!bool(bitfield_1, 2, 1); }
+        @property void DockTabIsVisible(bool aValue) { bitfield_1 = SetValue(bitfield_1, 2, 1, aValue); };
+        @property bool DockTabWantClose() { return GetValue!bool(bitfield_1, 3, 1); }
+        @property void DockTabWantClose(bool aValue) { bitfield_1 = SetValue(bitfield_1, 3, 1, aValue); };
+        static assert((bitfield_1.sizeof * 8) >= 4.sizeof);
         short DockOrder; /// Order of the last time the window was visible within its DockNode. This is used to reorder windows that are reappearing on the same frame. Same value between windows that were active and windows that were none are possible.
         ImGuiWindowDockStyle DockStyle;
         ImGuiDockNode* DockNode; /// Which node are we docked into. Important: Prefer testing DockIsActive in many cases as this will still be set when the dock node is hidden.
@@ -2012,7 +2206,7 @@ extern (C) {
     struct ImGuiTable {
         ImGuiID ID;
         ImGuiTableFlags Flags;
-        void* RawData; /// Single allocation to hold Columns[], DisplayOrderToIndex[] and RowCellData[]
+        void* RawData; /// Single allocation to hold Columns[], DisplayOrderToIndex[], and RowCellData[]
         ImGuiTableTempData* TempData; /// Transient data while table is active. Point within g.CurrentTableStack[]
         ImSpan!(ImGuiTableColumn) Columns; /// Point within RawData[]
         ImSpan!(ImGuiTableColumnIdx) DisplayOrderToIndex; /// Point within RawData[]. Store display order of columns (when not reordered, the values are 0...Count-1)
@@ -2026,7 +2220,7 @@ extern (C) {
         int ColumnsCount; /// Number of columns declared in BeginTable()
         int CurrentRow;
         int CurrentColumn;
-        ImS16 InstanceCurrent; /// Count of BeginTable() calls with same ID in the same frame (generally 0). This is a little bit similar to BeginCount for a window, but multiple table with same ID look are multiple tables, they are just synched.
+        ImS16 InstanceCurrent; /// Count of BeginTable() calls with same ID in the same frame (generally 0). This is a little bit similar to BeginCount for a window, but multiple tables with the same ID are multiple tables, they are just synced.
         ImS16 InstanceInteracted; /// Mark which instance (generally 0) of the same ID is being interacted with
         float RowPosY1;
         float RowPosY2;
@@ -2034,8 +2228,15 @@ extern (C) {
         float RowCellPaddingY; /// Top and bottom padding. Reloaded during row change.
         float RowTextBaseline;
         float RowIndentOffsetX;
-        ImGuiTableRowFlags RowFlags; /// Current row flags, see ImGuiTableRowFlags_
-        ImGuiTableRowFlags LastRowFlags;
+        // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
+        //ImGuiTableRowFlags RowFlags : 16; /// Current row flags, see ImGuiTableRowFlags_
+        //ImGuiTableRowFlags LastRowFlags : 16;
+        ImGuiTableRowFlags bitfield_0;
+        @property ImGuiTableRowFlags RowFlags() { return GetValue!ImGuiTableRowFlags(bitfield_0, 0, 16); }
+        @property void RowFlags(ImGuiTableRowFlags aValue) { bitfield_0 = SetValue(bitfield_0, 0, 16, aValue); };
+        @property ImGuiTableRowFlags LastRowFlags() { return GetValue!ImGuiTableRowFlags(bitfield_0, 16, 16); }
+        @property void LastRowFlags(ImGuiTableRowFlags aValue) { bitfield_0 = SetValue(bitfield_0, 16, 16, aValue); };
+        static assert((bitfield_0.sizeof * 8) >= 32.sizeof);
         int RowBgColorCounter; /// Counter for alternating background colors (can be fast-forwarded by e.g clipper), not same as CurrentRow because header rows typically don't increase this.
         ImU32[2] RowBgColor; /// Background color override for current row.
         ImU32 BorderColorStrong;
@@ -2058,7 +2259,7 @@ extern (C) {
         float AngledHeadersHeight; /// Set by TableAngledHeadersRow(), used in TableUpdateLayout()
         float AngledHeadersSlope; /// Set by TableAngledHeadersRow(), used in TableUpdateLayout()
         ImRect OuterRect; /// Note: for non-scrolling table, OuterRect.Max.y is often FLT_MAX until EndTable(), unless a height has been specified in BeginTable().
-        ImRect InnerRect; /// InnerRect but without decoration. As with OuterRect, for non-scrolling tables, InnerRect.Max.y is
+        ImRect InnerRect; /// InnerRect but without decoration. As with OuterRect, for non-scrolling tables, InnerRect.Max.y is "
         ImRect WorkRect;
         ImRect InnerClipRect;
         ImRect BgClipRect; /// We use this to cpu-clip cell background color fill, evolve during the frame as we cross frozen rows boundaries
@@ -2125,6 +2326,18 @@ extern (C) {
         bool HostSkipItems; /// Backup of InnerWindow->SkipItem at the end of BeginTable(), because we will overwrite InnerWindow->SkipItem on a per-column basis
     }
 
+    /// Output of ImFontAtlas::GetCustomRect() when using custom rectangles.
+    /// Those values may not be cached/stored as they are only valid for the current value of atlas->TexRef
+    /// (this is in theory derived from ImTextureRect but we use separate structures for reasons)
+    struct ImFontAtlasRect {
+        ushort x; /// Position (in current texture)
+        ushort y; /// Position (in current texture)
+        ushort w; /// Size
+        ushort h; /// Size
+        ImVec2 uv0; /// UV coordinates (in current texture)
+        ImVec2 uv1; /// UV coordinates (in current texture)
+    }
+
     /// Transient per-window data, reset at the beginning of the frame. This used to be called ImGuiDrawContext, hence the DC variable name in ImGuiWindow.
     /// (That's theory, in practice the delimitation between ImGuiWindow and ImGuiWindowTempData is quite tenuous and could be reconsidered..)
     /// (This doesn't need a constructor because we zero-clear it as part of ImGuiWindow and all frame-temporary data are setup on Begin)
@@ -2159,6 +2372,7 @@ extern (C) {
         ImGuiMenuColumns MenuColumns; /// Simplified columns storage for menu items measurement
         int TreeDepth; /// Current tree depth.
         ImU32 TreeHasStackDataDepthMask; /// Store whether given depth has ImGuiTreeNodeStackData data. Could be turned into a ImU64 if necessary.
+        ImU32 TreeRecordsClippedNodesY2Mask; /// Store whether we should keep recording Y2. Cleared when passing clip max. Equivalent TreeHasStackDataDepthMask value should always be set.
         ImVector!(ImGuiWindow*) ChildWindows;
         ImGuiStorage* StateStorage; /// Current persistent per-window storage (store e.g. tree node open/close state)
         ImGuiOldColumns* CurrentColumns; /// Current columns set
@@ -2189,27 +2403,39 @@ extern (C) {
     }
 
     /// Hold rendering data for one glyph.
-    /// (Note: some language parsers may fail to convert the 31+1 bitfield members, in this case maybe drop store a single u32 or we can rework this)
+    /// (Note: some language parsers may fail to convert the bitfield members, in this case maybe drop store a single u32 or we can rework this)
     struct ImFontGlyph {
-        uint Colored; /// Flag to indicate glyph is colored and should generally ignore tinting (make it usable with no shift on little-endian as this is used in loops)
-        uint Visible; /// Flag to indicate glyph has no visible pixels (e.g. space). Allow early out when rendering.
-        uint Codepoint; /// 0x0000..0x10FFFF
-        float AdvanceX; /// Distance to next character (= data from font + ImFontConfig::GlyphExtraSpacing.x baked in)
-        float X0; /// Glyph corners
-        float Y0; /// Glyph corners
-        float X1; /// Glyph corners
-        float Y1; /// Glyph corners
-        float U0; /// Texture coordinates
-        float V0; /// Texture coordinates
-        float U1; /// Texture coordinates
-        float V1; /// Texture coordinates
+        // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
+        //uint Colored : 1; /// Flag to indicate glyph is colored and should generally ignore tinting (make it usable with no shift on little-endian as this is used in loops)
+        //uint Visible : 1; /// Flag to indicate glyph has no visible pixels (e.g. space). Allow early out when rendering.
+        //uint SourceIdx : 4; /// Index of source in parent font
+        //uint Codepoint : 26; /// 0x0000..0x10FFFF
+        uint bitfield_0;
+        @property uint Colored() { return GetValue!uint(bitfield_0, 0, 1); }
+        @property void Colored(uint aValue) { bitfield_0 = SetValue(bitfield_0, 0, 1, aValue); };
+        @property uint Visible() { return GetValue!uint(bitfield_0, 1, 1); }
+        @property void Visible(uint aValue) { bitfield_0 = SetValue(bitfield_0, 1, 1, aValue); };
+        @property uint SourceIdx() { return GetValue!uint(bitfield_0, 2, 4); }
+        @property void SourceIdx(uint aValue) { bitfield_0 = SetValue(bitfield_0, 2, 4, aValue); };
+        @property uint Codepoint() { return GetValue!uint(bitfield_0, 6, 26); }
+        @property void Codepoint(uint aValue) { bitfield_0 = SetValue(bitfield_0, 6, 26, aValue); };
+        static assert((bitfield_0.sizeof * 8) >= 32.sizeof);
+        float AdvanceX; /// Horizontal distance to advance cursor/layout position.
+        float X0; /// Glyph corners. Offsets from current cursor/layout position.
+        float Y0; /// Glyph corners. Offsets from current cursor/layout position.
+        float X1; /// Glyph corners. Offsets from current cursor/layout position.
+        float Y1; /// Glyph corners. Offsets from current cursor/layout position.
+        float U0; /// Texture coordinates for the current value of ImFontAtlas->TexRef. Cached equivalent of calling GetCustomRect() with PackId.
+        float V0; /// Texture coordinates for the current value of ImFontAtlas->TexRef. Cached equivalent of calling GetCustomRect() with PackId.
+        float U1; /// Texture coordinates for the current value of ImFontAtlas->TexRef. Cached equivalent of calling GetCustomRect() with PackId.
+        float V1; /// Texture coordinates for the current value of ImFontAtlas->TexRef. Cached equivalent of calling GetCustomRect() with PackId.
+        int PackId; /// [Internal] ImFontAtlasRectId value (FIXME: Cold data, could be moved elsewhere?)
     }
 
     struct ImGuiNextItemData {
         ImGuiNextItemDataFlags HasFlags; /// Called HasFlags instead of Flags to avoid mistaking this
         ImGuiItemFlags ItemFlags; /// Currently only tested/used for ImGuiItemFlags_AllowOverlap and ImGuiItemFlags_HasSelectionUserData.
-         
-            /// Non-flags members are NOT cleared by ItemAdd() meaning they are still valid during NavProcessItem()
+             /// Members below are NOT cleared by ItemAdd() meaning they are still valid during e.g. NavProcessItem(). Always rely on HasFlags.
         ImGuiID FocusScopeId; /// Set by SetNextItemSelectionUserData()
         ImGuiSelectionUserData SelectionUserData; /// Set by SetNextItemSelectionUserData() (note that NULL/0 is a valid value, we use -1 == ImGuiSelectionUserData_Invalid to mark invalid values)
         float Width; /// Set by SetNextItemWidth()
@@ -2219,6 +2445,27 @@ extern (C) {
         ImU8 OpenCond; /// Set by SetNextItemOpen()
         ImGuiDataTypeStorage RefVal; /// Not exposed yet, for ImGuiInputTextFlags_ParseEmptyAsRefVal
         ImGuiID StorageId; /// Set by SetNextItemStorageID()
+    }
+
+    struct ImGuiStyleVarInfo {
+        // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
+        //ImU32 Count : 8; /// 1+
+        ImU32 bitfield_0;
+        @property ImU32 Count() { return GetValue!ImU32(bitfield_0, 0, 8); }
+        @property void Count(ImU32 aValue) { bitfield_0 = SetValue(bitfield_0, 0, 8, aValue); };
+        static assert((bitfield_0.sizeof * 8) >= 8.sizeof);
+        // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
+        //ImGuiDataType DataType : 8;
+        ImGuiDataType bitfield_1;
+        @property ImGuiDataType DataType() { return GetValue!ImGuiDataType(bitfield_1, 0, 8); }
+        @property void DataType(ImGuiDataType aValue) { bitfield_1 = SetValue(bitfield_1, 0, 8, aValue); };
+        static assert((bitfield_1.sizeof * 8) >= 8.sizeof);
+        // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
+        //ImU32 Offset : 16; /// Offset in parent structure
+        ImU32 bitfield_2;
+        @property ImU32 Offset() { return GetValue!ImU32(bitfield_2, 0, 16); }
+        @property void Offset(ImU32 aValue) { bitfield_2 = SetValue(bitfield_2, 0, 16, aValue); };
+        static assert((bitfield_2.sizeof * 8) >= 16.sizeof);
     }
 
         /// [Internal]
@@ -2279,33 +2526,27 @@ extern (C) {
     }
 
     /// Font runtime data and rendering
-    /// ImFontAtlas automatically loads a default embedded font for you when you call GetTexDataAsAlpha8() or GetTexDataAsRGBA32().
+    /// - ImFontAtlas automatically loads a default embedded font for you if you didn't load one manually.
+    /// - Since 1.92.X a font may be rendered as any size! Therefore a font doesn't have one specific size.
+    /// - Use 'font->GetFontBaked(size)' to retrieve the ImFontBaked* corresponding to a given size.
+    /// - If you used g.Font + g.FontSize (which is frequent from the ImGui layer), you can use g.FontBaked as a shortcut, as g.FontBaked == g.Font->GetFontBaked(g.FontSize).
     struct ImFont {
          
-            /// [Internal] Members: Hot ~20/24 bytes (for CalcTextSize)
-        ImVector!(float) IndexAdvanceX; /// 12-16 /// out /// Sparse. Glyphs->AdvanceX in a directly indexable way (cache-friendly for CalcTextSize functions which only this info, and are often bottleneck in large UI).
-        float FallbackAdvanceX; /// 4     /// out /// = FallbackGlyph->AdvanceX
-        float FontSize; /// 4     /// in  /// Height of characters/line, set during loading (don't change after loading)
-             /// [Internal] Members: Hot ~28/40 bytes (for RenderText loop)
-        ImVector!(ImU16) IndexLookup; /// 12-16 /// out /// Sparse. Index glyphs by Unicode code-point.
-        ImVector!(ImFontGlyph) Glyphs; /// 12-16 /// out /// All glyphs.
-        const(ImFontGlyph)* FallbackGlyph; /// 4-8   /// out /// = FindGlyph(FontFallbackChar)
-             /// [Internal] Members: Cold ~32/40 bytes
-            /// Conceptually ConfigData[] is the list of font sources merged to create this font.
-        ImFontAtlas* ContainerAtlas; /// 4-8   /// out /// What we has been loaded into
-        const ImFontConfig* ConfigData; /// 4-8   /// in  /// Pointer within ContainerAtlas->ConfigData to ConfigDataCount instances
-        short ConfigDataCount; /// 2     /// in  /// Number of ImFontConfig involved in creating this font. Usually 1, or >1 when merging multiple font sources into one ImFont.
-        short EllipsisCharCount; /// 1     /// out /// 1 or 3
+            /// [Internal] Members: Hot ~12-20 bytes
+        ImFontBaked* LastBaked; /// 4-8   /// Cache last bound baked. NEVER USE DIRECTLY. Use GetFontBaked().
+        ImFontAtlas* ContainerAtlas; /// 4-8   /// What we have been loaded into.
+        ImFontFlags Flags; /// 4     /// Font flags.
+        float CurrentRasterizerDensity; /// Current rasterizer density. This is a varying state of the font.
+             /// [Internal] Members: Cold ~24-52 bytes
+            /// Conceptually Sources[] is the list of font sources merged to create this font.
+        ImGuiID FontId; /// Unique identifier for the font
+        float LegacySize; /// 4     /// in  /// Font size passed to AddFont(). Use for old code calling PushFont() expecting to use that size. (use ImGui::GetFontBaked() to get font baked at current bound size).
+        ImVector!(ImFontConfig*) Sources; /// 16    /// in  /// List of sources. Pointers within ContainerAtlas->Sources[]
         ImWchar EllipsisChar; /// 2-4   /// out /// Character used for ellipsis rendering ('...').
         ImWchar FallbackChar; /// 2-4   /// out /// Character used if a glyph isn't found (U+FFFD, '?')
-        float EllipsisWidth; /// 4     /// out /// Total ellipsis Width
-        float EllipsisCharStep; /// 4     /// out /// Step between characters when EllipsisCount > 0
-        float Scale; /// 4     /// in  /// Base font scale (1.0f), multiplied by the per-window font scale which you can adjust with SetWindowFontScale()
-        float Ascent; /// 4+4   /// out /// Ascent: distance from top to bottom of e.g. 'A' [0..FontSize] (unscaled)
-        float Descent; /// 4+4   /// out /// Ascent: distance from top to bottom of e.g. 'A' [0..FontSize] (unscaled)
-        int MetricsTotalSurface; /// 4     /// out /// Total surface in pixels to get an idea of the font rasterization/texture cost (not exact, we approximate the cost of padding between glyphs)
-        bool DirtyLookupTables; /// 1     /// out //
-        ImU8[(0xFFFF+1)/8192/8] Used8kPagesMap; /// 1 bytes if ImWchar=ImWchar16, 16 bytes if ImWchar==ImWchar32. Store 1-bit for each block of 4K codepoints that has one active glyph. This is mainly used to facilitate iterations across all used codepoints.
+        ImU8[(0x10FFFF+1)/8192/8] Used8kPagesMap; /// 1 bytes if ImWchar=ImWchar16, 16 bytes if ImWchar==ImWchar32. Store 1-bit for each block of 4K codepoints that has one active glyph. This is mainly used to facilitate iterations across all used codepoints.
+        bool EllipsisAutoBake; /// 1     ///     /// Mark when the "..." glyph needs to be generated.
+        ImGuiStorage RemapPairs; /// 16    ///     /// Remapping pairs when using AddRemapChar(), otherwise empty.
     }
 
     /// ImVec4: 4D vector used to store clipping rectangles, colors etc. [Compile-time configurable type]
@@ -2314,6 +2555,10 @@ extern (C) {
         float y;
         float z;
         float w;
+    }
+
+    struct stbrp_context_opaque {
+        char[80] data;
     }
 
     struct ImGuiDockContext {
@@ -2355,16 +2600,31 @@ extern (C) {
         ImVector!(ImDrawIdx) _IdxBuffer;
     }
 
-    /// sizeof() ~ 12
+    /// sizeof() ~ 16
     struct ImGuiTableColumnSettings {
         float WidthOrWeight;
         ImGuiID UserID;
         ImGuiTableColumnIdx Index;
         ImGuiTableColumnIdx DisplayOrder;
         ImGuiTableColumnIdx SortOrder;
-        ImU8 SortDirection;
-        ImU8 IsEnabled; /// "Visible" in ini file
-        ImU8 IsStretch;
+        // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
+        //ImU8 SortDirection : 2;
+        ImU8 bitfield_0;
+        @property ImU8 SortDirection() { return GetValue!ImU8(bitfield_0, 0, 2); }
+        @property void SortDirection(ImU8 aValue) { bitfield_0 = SetValue(bitfield_0, 0, 2, aValue); };
+        static assert((bitfield_0.sizeof * 8) >= 2.sizeof);
+        // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
+        //ImS8 IsEnabled : 2; /// "Visible" in ini file
+        ImS8 bitfield_1;
+        @property ImS8 IsEnabled() { return GetValue!ImS8(bitfield_1, 0, 2); }
+        @property void IsEnabled(ImS8 aValue) { bitfield_1 = SetValue(bitfield_1, 0, 2, aValue); };
+        static assert((bitfield_1.sizeof * 8) >= 2.sizeof);
+        // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
+        //ImU8 IsStretch : 1;
+        ImU8 bitfield_2;
+        @property ImU8 IsStretch() { return GetValue!ImU8(bitfield_2, 0, 1); }
+        @property void IsStretch(ImU8 aValue) { bitfield_2 = SetValue(bitfield_2, 0, 1, aValue); };
+        static assert((bitfield_2.sizeof * 8) >= 1.sizeof);
     }
 
     /// Helper: Growable text buffer for logging/accumulating text
@@ -2399,7 +2659,7 @@ extern (C) {
         int DisplayEnd; /// End of items to display (exclusive)
         int ItemsCount; /// [Internal] Number of items
         float ItemsHeight; /// [Internal] Height of item after a first step and item submission can calculate it
-        float StartPosY; /// [Internal] Cursor position at the time of Begin() or after table frozen rows are all processed
+        double StartPosY; /// [Internal] Cursor position at the time of Begin() or after table frozen rows are all processed
         double StartSeekOffsetY; /// [Internal] Account for frozen rows in a table and initial loss of precision in very large windows.
         void* TempData; /// [Internal] Internal data
     }
@@ -2412,7 +2672,8 @@ extern (C) {
 
     /// Storage for SetNexWindow** functions
     struct ImGuiNextWindowData {
-        ImGuiNextWindowDataFlags Flags;
+        ImGuiNextWindowDataFlags HasFlags;
+             /// Members below are NOT cleared. Always rely on HasFlags.
         ImGuiCond PosCond;
         ImGuiCond SizeCond;
         ImGuiCond CollapsedCond;
@@ -2422,6 +2683,7 @@ extern (C) {
         ImVec2 SizeVal;
         ImVec2 ContentSizeVal;
         ImVec2 ScrollVal;
+        ImGuiWindowFlags WindowFlags; /// Only honored by BeginTable()
         ImGuiChildFlags ChildFlags;
         bool PosUndock;
         bool CollapsedVal;
@@ -2456,12 +2718,13 @@ extern (C) {
         bool ShowDrawCmdMesh;
         bool ShowDrawCmdBoundingBoxes;
         bool ShowTextEncodingViewer;
-        bool ShowAtlasTintedWithTextColor;
+        bool ShowTextureUsedRect;
         bool ShowDockingNodes;
         int ShowWindowsRectsType;
         int ShowTablesRectsType;
         int HighlightMonitorIdx;
         ImGuiID HighlightViewportID;
+        bool ShowFontPreview;
     }
 
     /// This extends ImGuiKeyData but only for named keys (legacy keys don't support the new features)
@@ -2491,6 +2754,7 @@ extern (C) {
         ImGuiViewportFlags Flags; /// See ImGuiViewportFlags_
         ImVec2 Pos; /// Main Area: Position of the viewport (Dear ImGui coordinates are the same as OS desktop/native coordinates)
         ImVec2 Size; /// Main Area: Size of the viewport.
+        ImVec2 FramebufferScale; /// Density of the viewport for Retina display (always 1,1 on Windows, may be 2,2 etc on macOS/iOS). This will affect font rasterizer density.
         ImVec2 WorkPos; /// Work Area: Position of the viewport minus task bars, menus bars, status bars (>= Pos)
         ImVec2 WorkSize; /// Work Area: Size of the viewport minus task bars, menu bars, status bars (<= Size)
         float DpiScale; /// 1.0f = 96 DPI = No extra scale.
@@ -2503,8 +2767,8 @@ extern (C) {
             /// The library never uses those fields, they are merely storage to facilitate backend implementation.
         void* RendererUserData; /// void* to hold custom data structure for the renderer (e.g. swap chain, framebuffers etc.). generally set by your Renderer_CreateWindow function.
         void* PlatformUserData; /// void* to hold custom data structure for the OS / platform (e.g. windowing info, render context). generally set by your Platform_CreateWindow function.
-        void* PlatformHandle; /// void* to hold higher-level, platform window handle (e.g. HWND, GLFWWindow*, SDL_Window*), for FindViewportByPlatformHandle().
-        void* PlatformHandleRaw; /// void* to hold lower-level, platform-native window handle (under Win32 this is expected to be a HWND, unused for other platforms), when using an abstraction layer like GLFW or SDL (where PlatformHandle would be a SDL_Window*)
+        void* PlatformHandle; /// void* to hold higher-level, platform window handle (e.g. HWND for Win32 backend, Uint32 WindowID for SDL, GLFWWindow* for GLFW), for FindViewportByPlatformHandle().
+        void* PlatformHandleRaw; /// void* to hold lower-level, platform-native window handle (always HWND on Win32 platform, unused for other platforms).
         bool PlatformWindowCreated; /// Platform window has been created (Platform_CreateWindow() has been called). This is false during the first frame where a viewport is being created.
         bool PlatformRequestMove; /// Platform window requested move (e.g. window was moved by the OS / host window manager, authoritative position will be OS window position)
         bool PlatformRequestResize; /// Platform window requested resize (e.g. window was resized by the OS / host window manager, authoritative size will be OS window size)
@@ -2579,16 +2843,24 @@ extern (C) {
         bool WantApply; /// Set when loaded from .ini data (to enable merging/loading .ini data into an already running context)
     }
 
+    /// Helper: ImVec2i (2D vector, integer)
+    struct ImVec2i {
+        int x;
+        int y;
+    }
+
     /// Load and rasterize multiple TTF/OTF fonts into a same texture. The font atlas will build a single texture holding:
     ///  - One or more fonts.
     ///  - Custom graphics data needed to render the shapes needed by Dear ImGui.
     ///  - Mouse cursor shapes for software cursor rendering (unless setting 'Flags |= ImFontAtlasFlags_NoMouseCursors' in the font atlas).
-    /// It is the user-code responsibility to setup/build the atlas, then upload the pixel data into a texture accessible by your graphics api.
-    ///  - Optionally, call any of the AddFont*** functions. If you don't call any, the default font embedded in the code will be loaded for you.
-    ///  - Call GetTexDataAsAlpha8() or GetTexDataAsRGBA32() to build and retrieve pixels data.
-    ///  - Upload the pixels data into a texture within your graphics system (see imgui_impl_xxxx.cpp examples)
+    ///  - If you don't call any AddFont*** functions, the default font embedded in the code will be loaded for you.
+    /// It is the rendering backend responsibility to upload texture into your graphics API:
+    ///  - ImGui_ImplXXXX_RenderDrawData() functions generally iterate platform_io->Textures[] to create/update/destroy each ImTextureData instance.
+    ///  - Backend then set ImTextureData's TexID and BackendUserData.
+    ///  - Texture id are passed back to you during rendering to identify the texture. Read FAQ entry about ImTextureID/ImTextureRef for more details.
+    /// Legacy path:
+    ///  - Call Build() + GetTexDataAsAlpha8() or GetTexDataAsRGBA32() to build and retrieve pixels data.
     ///  - Call SetTexID(my_tex_id); and pass the pointer/identifier to your texture in a format natural to your graphics API.
-    ///    This value will be passed back to you during rendering to identify the texture. Read FAQ entry about ImTextureID for more details.
     /// Common pitfalls:
     /// - If you pass a 'glyph_ranges' array to AddFont*** functions, you need to make sure that your array persist up until the
     ///   atlas is build (when calling GetTexData*** or Build()). We only copy the pointer, not the data.
@@ -2597,36 +2869,42 @@ extern (C) {
     /// - Even though many functions are suffixed with "TTF", OTF data is supported just as well.
     /// - This is an old API and it is currently awkward for those and various other reasons! We will address them in the future!
     struct ImFontAtlas {
+             /// Input
         ImFontAtlasFlags Flags; /// Build flags (see ImFontAtlasFlags_)
-        ImTextureID TexID; /// User data to refer to the texture once it has been uploaded to user's graphic systems. It is passed back to you during rendering via the ImDrawCmd structure.
-        int TexDesiredWidth; /// Texture width desired by user before Build(). Must be a power-of-two. If have many glyphs your graphics API have texture size restrictions you may want to increase texture width to decrease height.
+        ImTextureFormat TexDesiredFormat; /// Desired texture format (default to ImTextureFormat_RGBA32 but may be changed to ImTextureFormat_Alpha8).
         int TexGlyphPadding; /// FIXME: Should be called "TexPackPadding". Padding between glyphs within texture in pixels. Defaults to 1. If your rendering method doesn't rely on bilinear filtering you may set this to 0 (will also need to set AntiAliasedLinesUseTex = false).
+        int TexMinWidth; /// Minimum desired texture width. Must be a power of two. Default to 512.
+        int TexMinHeight; /// Minimum desired texture height. Must be a power of two. Default to 128.
+        int TexMaxWidth; /// Maximum desired texture width. Must be a power of two. Default to 8192.
+        int TexMaxHeight; /// Maximum desired texture height. Must be a power of two. Default to 8192.
         void* UserData; /// Store your own atlas related user-data (if e.g. you have multiple font atlas).
+        ImTextureRef TexRef; /// Latest texture identifier == TexData->GetTexRef().
+        ImTextureData* TexData; /// Latest texture.
              /// [Internal]
-            /// NB: Access texture data via GetTexData*() calls! Which will setup a default font for you.
-        bool Locked; /// Marked as Locked by ImGui::NewFrame() so attempt to modify the atlas will assert.
-        bool TexReady; /// Set when texture was built matching current font input
-        bool TexPixelsUseColors; /// Tell whether our texture data is known to use colors (rather than just alpha channel), in order to help backend select a format.
-        char* TexPixelsAlpha8; /// 1 component per pixel, each component is unsigned 8-bit. Total size = TexWidth * TexHeight
-        uint* TexPixelsRGBA32; /// 4 component per pixel, each component is unsigned 8-bit. Total size = TexWidth * TexHeight * 4
-        int TexWidth; /// Texture width calculated during Build().
-        int TexHeight; /// Texture height calculated during Build().
-        ImVec2 TexUvScale; /// = (1.0f/TexWidth, 1.0f/TexHeight)
-        ImVec2 TexUvWhitePixel; /// Texture coordinates to a white pixel
+        ImVector!(ImTextureData*) TexList; /// Texture list (most often TexList.Size == 1). TexData is always == TexList.back(). DO NOT USE DIRECTLY, USE GetDrawData().Textures[]/GetPlatformIO().Textures[] instead!
+        bool Locked; /// Marked as locked during ImGui::NewFrame()..EndFrame() scope if TexUpdates are not supported. Any attempt to modify the atlas will assert.
+        bool RendererHasTextures; /// Copy of (BackendFlags & ImGuiBackendFlags_RendererHasTextures) from supporting context.
+        bool TexIsBuilt; /// Set when texture was built matching current font input. Mostly useful for legacy IsBuilt() call.
+        bool TexPixelsUseColors; /// Tell whether our texture data is known to use colors (rather than just alpha channel), in order to help backend select a format or conversion process.
+        ImVec2 TexUvScale; /// = (1.0f/TexData->TexWidth, 1.0f/TexData->TexHeight). May change as new texture gets created.
+        ImVec2 TexUvWhitePixel; /// Texture coordinates to a white pixel. May change as new texture gets created.
         ImVector!(ImFont*) Fonts; /// Hold all the fonts returned by AddFont*. Fonts[0] is the default font upon calling ImGui::NewFrame(), use ImGui::PushFont()/PopFont() to change the current font.
-        ImVector!(ImFontAtlasCustomRect) CustomRects; /// Rectangles for packing custom texture data into the atlas.
-        ImVector!(ImFontConfig) ConfigData; /// Configuration data
+        ImVector!(ImFontConfig) Sources; /// Source/configuration data
         ImVec4[(32)+1] TexUvLines; /// UVs for baked anti-aliased lines
-             /// [Internal] Font builder
-        const(ImFontBuilderIO)* FontBuilderIO; /// Opaque interface to a font builder (default to stb_truetype, can be changed to use FreeType by defining IMGUI_ENABLE_FREETYPE).
-        uint FontBuilderFlags; /// Shared flags (for all fonts) for custom font builder. THIS IS BUILD IMPLEMENTATION DEPENDENT. Per-font override is also available in ImFontConfig.
-             /// [Internal] Packing data
-        int PackIdMouseCursors; /// Custom texture rectangle ID for white pixel and mouse cursors
-        int PackIdLines; /// Custom texture rectangle ID for baked anti-aliased lines
+        int TexNextUniqueID; /// Next value to be stored in TexData->UniqueID
+        int FontNextUniqueID; /// Next value to be stored in ImFont->FontID
+        ImVector!(ImDrawListSharedData*) DrawListSharedDatas; /// List of users for this atlas. Typically one per Dear ImGui context.
+        ImFontAtlasBuilder* Builder; /// Opaque interface to our data that doesn't need to be public and may be discarded when rebuilding.
+        const(ImFontLoader)* FontLoader; /// Font loader opaque interface (default to stb_truetype, can be changed to use FreeType by defining IMGUI_ENABLE_FREETYPE). Don't set directly!
+        const(char)* FontLoaderName; /// Font loader name (for display e.g. in About box) == FontLoader->Name
+        void* FontLoaderData; /// Font backend opaque storage
+        uint FontLoaderFlags; /// Shared flags (for all fonts) for font loader. THIS IS BUILD IMPLEMENTATION DEPENDENT (e.g. Per-font override is also available in ImFontConfig).
+        int RefCount; /// Number of contexts using this atlas
+        ImGuiContext* OwnerContext; /// Context which own the atlas will be in charge of updating and destroying it.
     }
 
     /// Store data emitted by TreeNode() for usage by TreePop()
-    /// - To implement ImGuiTreeNodeFlags_NavLeftJumpsBackHere: store the minimum amount of data
+    /// - To implement ImGuiTreeNodeFlags_NavLeftJumpsToParent: store the minimum amount of data
     ///   which we can't infer in TreePop(), to perform the equivalent of NavApplyItemToResult().
     ///   Only stored when the node is a potential candidate for landing on a Left arrow jump.
     struct ImGuiTreeNodeStackData {
@@ -2634,6 +2912,9 @@ extern (C) {
         ImGuiTreeNodeFlags TreeFlags;
         ImGuiItemFlags ItemFlags; /// Used for nav landing
         ImRect NavRect; /// Used for nav landing
+        float DrawLinesX1;
+        float DrawLinesToNodesY2;
+        ImGuiTableColumnIdx DrawLinesTableColumn;
     }
 
     /// Parameters for TableAngledHeadersRowEx()
@@ -2721,10 +3002,57 @@ extern (C) {
         ImGuiSelectionUserData RangeLastItem; ///                  /  ms:w, app:r   /// Parameter for SetRange request (this is generally == RangeSrcItem when shift selecting from bottom to top). Inclusive!
     }
 
+    /// Font runtime data for a given size
+    /// Important: pointers to ImFontBaked are only valid for the current frame.
+    struct ImFontBaked {
+         
+            /// [Internal] Members: Hot ~20/24 bytes (for CalcTextSize)
+        ImVector!(float) IndexAdvanceX; /// 12-16 /// out /// Sparse. Glyphs->AdvanceX in a directly indexable way (cache-friendly for CalcTextSize functions which only this info, and are often bottleneck in large UI).
+        float FallbackAdvanceX; /// 4     /// out /// FindGlyph(FallbackChar)->AdvanceX
+        float Size; /// 4     /// in  /// Height of characters/line, set during loading (doesn't change after loading)
+        float RasterizerDensity; /// 4     /// in  /// Density this is baked at
+             /// [Internal] Members: Hot ~28/36 bytes (for RenderText loop)
+        ImVector!(ImU16) IndexLookup; /// 12-16 /// out /// Sparse. Index glyphs by Unicode code-point.
+        ImVector!(ImFontGlyph) Glyphs; /// 12-16 /// out /// All glyphs.
+        int FallbackGlyphIndex; /// 4     /// out /// Index of FontFallbackChar
+             /// [Internal] Members: Cold
+        float Ascent; /// 4+4   /// out /// Ascent: distance from top to bottom of e.g. 'A' [0..FontSize] (unscaled)
+             /// [Internal] Members: Cold
+        float Descent; /// 4+4   /// out /// Ascent: distance from top to bottom of e.g. 'A' [0..FontSize] (unscaled)
+        // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
+        //uint MetricsTotalSurface : 26; /// 3  /// out /// Total surface in pixels to get an idea of the font rasterization/texture cost (not exact, we approximate the cost of padding between glyphs)
+        //uint WantDestroy : 1; /// 0  ///     /// Queued for destroy
+        //uint LockLoadingFallback : 1; /// 0  ///     //
+        uint bitfield_0;
+        @property uint MetricsTotalSurface() { return GetValue!uint(bitfield_0, 0, 26); }
+        @property void MetricsTotalSurface(uint aValue) { bitfield_0 = SetValue(bitfield_0, 0, 26, aValue); };
+        @property uint WantDestroy() { return GetValue!uint(bitfield_0, 26, 1); }
+        @property void WantDestroy(uint aValue) { bitfield_0 = SetValue(bitfield_0, 26, 1, aValue); };
+        @property uint LockLoadingFallback() { return GetValue!uint(bitfield_0, 27, 1); }
+        @property void LockLoadingFallback(uint aValue) { bitfield_0 = SetValue(bitfield_0, 27, 1, aValue); };
+        static assert((bitfield_0.sizeof * 8) >= 28.sizeof);
+        int LastUsedFrame; /// 4     ///     /// Record of that time this was bounds
+        ImGuiID BakedId; /// 4     //
+        ImFont* ContainerFont; /// 4-8   /// in  /// Parent font
+        void* FontLoaderDatas; /// 4-8   ///     /// Font loader opaque storage (per baked font * sources): single contiguous buffer allocated by imgui, passed to loader.
+    }
+
+    /// Hooks and storage for a given font backend.
     /// This structure is likely to evolve as we add support for incremental atlas updates.
-    /// Conceptually this could be in ImGuiPlatformIO, but we are far from ready to make this public.
-    struct ImFontBuilderIO {
-        bool function(ImFontAtlas* atlas) FontBuilder_Build;
+    /// Conceptually this could be public, but API is still going to be evolve.
+    struct ImFontLoader {
+        const(char)* Name;
+        bool function(ImFontAtlas* atlas) LoaderInit;
+        void function(ImFontAtlas* atlas) LoaderShutdown;
+        bool function(ImFontAtlas* atlas,ImFontConfig* src) FontSrcInit;
+        void function(ImFontAtlas* atlas,ImFontConfig* src) FontSrcDestroy;
+        bool function(ImFontAtlas* atlas,ImFontConfig* src,ImWchar codepoint) FontSrcContainsGlyph;
+        bool function(ImFontAtlas* atlas,ImFontConfig* src,ImFontBaked* baked,void* loader_data_for_baked_src) FontBakedInit;
+        void function(ImFontAtlas* atlas,ImFontConfig* src,ImFontBaked* baked,void* loader_data_for_baked_src) FontBakedDestroy;
+        bool function(ImFontAtlas* atlas,ImFontConfig* src,ImFontBaked* baked,void* loader_data_for_baked_src,ImWchar codepoint,ImFontGlyph* out_glyph) FontBakedLoadGlyph;
+             /// Size of backend data, Per Baked * Per Source. Buffers are managed by core to avoid excessive allocations.
+            /// FIXME: At this point the two other types of buffers may be managed by core to be consistent?
+        size_t FontBakedSrcLoaderDataSize;
     }
 
     /// Persistent Settings data, stored contiguously in SettingsNodes (sizeof() ~32 bytes)
@@ -2798,7 +3126,8 @@ extern (C) {
     struct ImGuiIO {
         ImGuiConfigFlags ConfigFlags; /// = 0              /// See ImGuiConfigFlags_ enum. Set by user/application. Keyboard/Gamepad navigation options, etc.
         ImGuiBackendFlags BackendFlags; /// = 0              /// See ImGuiBackendFlags_ enum. Set by backend (imgui_impl_xxx files or custom backend) to communicate features supported by the backend.
-        ImVec2 DisplaySize; /// <unset>          /// Main display size, in pixels (generally == GetMainViewport()->Size). May change every frame.
+        ImVec2 DisplaySize; /// <unset>          /// Main display size, in pixels (== GetMainViewport()->Size). May change every frame.
+        ImVec2 DisplayFramebufferScale; /// = (1, 1)         /// Main display density. For retina display where window coordinates are different from framebuffer coordinates. This will affect font density + will end up in ImDrawData::FramebufferScale.
         float DeltaTime; /// = 1.0f/60.0f     /// Time elapsed since last frame, in seconds. May change every frame.
         float IniSavingRate; /// = 5.0f           /// Minimum time between saving positions/sizes to .ini file, in seconds.
         const(char)* IniFilename; /// = "imgui.ini"    /// Path to .ini file (important: default "imgui.ini" is relative to current working dir!). Set NULL to disable automatic .ini loading/saving or if you want to manually call LoadIniSettingsXXX() / SaveIniSettingsXXX() functions.
@@ -2806,10 +3135,8 @@ extern (C) {
         void* UserData; /// = NULL           /// Store your own data.
              /// Font system
         ImFontAtlas* Fonts; /// <auto>           /// Font atlas: load, rasterize and pack one or more fonts into a single texture.
-        float FontGlobalScale; /// = 1.0f           /// Global scale all fonts
-        bool FontAllowUserScaling; /// = false          /// [OBSOLETE] Allow user scaling text of individual window with CTRL+Wheel.
         ImFont* FontDefault; /// = NULL           /// Font to use on NewFrame(). Use NULL to uses Fonts->Fonts[0].
-        ImVec2 DisplayFramebufferScale; /// = (1, 1)         /// For retina display or other situations where window coordinates are different from framebuffer coordinates. This generally ends up in ImDrawData::FramebufferScale.
+        bool FontAllowUserScaling; /// = false          /// [OBSOLETE] Allow user scaling text of individual window with CTRL+Wheel.
              /// Keyboard/Gamepad Navigation options
         bool ConfigNavSwapGamepadButtons; /// = false          /// Swap Activate<>Cancel (A<>B) buttons, matching typical "Nintendo/Japanese style" gamepad layout.
         bool ConfigNavMoveSetMousePos; /// = false          /// Directional/tabbing navigation teleports the mouse cursor. May be useful on TV/console systems where moving a virtual mouse is difficult. Will update io.MousePos and set io.WantSetMousePos=true.
@@ -2828,6 +3155,10 @@ extern (C) {
         bool ConfigViewportsNoTaskBarIcon; /// = false          /// Disable default OS task bar icon flag for secondary viewports. When a viewport doesn't want a task bar icon, ImGuiViewportFlags_NoTaskBarIcon will be set on it.
         bool ConfigViewportsNoDecoration; /// = true           /// Disable default OS window decoration flag for secondary viewports. When a viewport doesn't want window decorations, ImGuiViewportFlags_NoDecoration will be set on it. Enabling decoration can create subsequent issues at OS levels (e.g. minimum window size).
         bool ConfigViewportsNoDefaultParent; /// = false          /// Disable default OS parenting to main viewport for secondary viewports. By default, viewports are marked with ParentViewportId = <main_viewport>, expecting the platform backend to setup a parent/child relationship between the OS windows (some backend may ignore this). Set to true if you want the default to be 0, then all viewports will be top-level OS windows.
+             /// DPI/Scaling options
+            /// This may keep evolving during 1.92.x releases. Expect some turbulence.
+        bool ConfigDpiScaleFonts; /// = false          /// [EXPERIMENTAL] Automatically overwrite style.FontScaleDpi when Monitor DPI changes. This will scale fonts but _NOT_ scale sizes/padding for now.
+        bool ConfigDpiScaleViewports; /// = false          /// [EXPERIMENTAL] Scale Dear ImGui and Platform Windows when Monitor DPI changes.
              /// Miscellaneous options
             /// (you can visualize and interact with all options in 'Demo->Configuration')
         bool MouseDrawCursor; /// = false          /// Request ImGui to draw a mouse cursor for you (if you are on a platform without a mouse cursor). Cannot be easily renamed to 'io.ConfigXXX' because this is frequently used by backend implementations.
@@ -2875,7 +3206,8 @@ extern (C) {
             /// - Code should use PushID()/PopID() in loops, or append "##xx" to same-label identifiers.
             /// - Empty label e.g. Button("") == same ID as parent widget/node. Use Button("##xx") instead!
             /// - See FAQ https://github.com/ocornut/imgui/blob/master/docs/FAQ.md#q-about-the-id-stack-system
-        bool ConfigDebugHighlightIdConflicts; /// = true           /// Highlight and show an error message when multiple items have conflicting identifiers.
+        bool ConfigDebugHighlightIdConflicts; /// = true           /// Highlight and show an error message popup when multiple items have conflicting identifiers.
+        bool ConfigDebugHighlightIdConflictsShowItemPicker; //=true /// Show "Item Picker" button in aforementioned popup.
              /// Tools to test correct Begin/End and BeginChild/EndChild behaviors.
             /// - Presently Begin()/End() and BeginChild()/EndChild() needs to ALWAYS be called in tandem, regardless of return value of BeginXXX()
             /// - This is inconsistent with other BeginXXX functions and create confusion for many users.
@@ -2938,7 +3270,7 @@ extern (C) {
         bool[5] MouseDownOwned; /// Track if button was clicked inside a dear imgui window or over void blocked by a popup. We don't request mouse capture from the application if click started outside ImGui bounds.
         bool[5] MouseDownOwnedUnlessPopupClose; /// Track if button was clicked inside a dear imgui window.
         bool MouseWheelRequestAxisSwap; /// On a non-Mac system, holding SHIFT requests WheelY to perform the equivalent of a WheelX event. On a Mac system this is already enforced by the system.
-        bool MouseCtrlLeftAsRightClick; /// (OSX) Set to true when the current click was a ctrl-click that spawned a simulated right click
+        bool MouseCtrlLeftAsRightClick; /// (OSX) Set to true when the current click was a Ctrl+click that spawned a simulated right click
         float[5] MouseDownDuration; /// Duration the mouse button has been down (0.0f == just clicked)
         float[5] MouseDownDurationPrev; /// Previous time the mouse button has been down
         ImVec2[5] MouseDragMaxDistanceAbs; /// Maximum distance, absolute, on each axis, of how much mouse has traveled from the clicking point
@@ -2959,6 +3291,12 @@ extern (C) {
         float LastFrozenHeight; /// Height of frozen section from last frame
         int HoveredRowLast; /// Index of row which was hovered last frame.
         int HoveredRowNext; /// Index of row hovered this frame, set after encountering it.
+    }
+
+    struct ImTextureRef {
+             /// Members (either are set, never both!)
+        ImTextureData* _TexData; ///      A texture, generally owned by a ImFontAtlas. Will convert to ImTextureID during render loop, after texture has been uploaded.
+        ImTextureID _TexID; /// _OR_ Low-level backend texture identifier, if already uploaded or created by user/app. Generally provided to e.g. ImGui::Image() calls.
     }
 
     /// Data payload for Drag and Drop operations: AcceptDragDropPayload(), GetDragDropPayload()
@@ -3037,27 +3375,39 @@ extern (C) {
 
     /// A font input/source (we may rename this to ImFontSource in the future)
     struct ImFontConfig {
+         
+            /// Data Source
+        char[40] Name; /// <auto>   /// Name (strictly to ease debugging, hence limited size buffer)
         void* FontData; ///          /// TTF/OTF data
         int FontDataSize; ///          /// TTF/OTF data size
         bool FontDataOwnedByAtlas; /// true     /// TTF/OTF data ownership taken by the container ImFontAtlas (will delete memory itself).
+             /// Options
         bool MergeMode; /// false    /// Merge into previous ImFont, so you can combine multiple inputs font into one ImFont (e.g. ASCII font + icons + Japanese glyphs). You may want to use GlyphOffset.y when merge font of different heights.
         bool PixelSnapH; /// false    /// Align every glyph AdvanceX to pixel boundaries. Useful e.g. if you are merging a non-pixel aligned font with the default font. If enabled, you can set OversampleH/V to 1.
-        int FontNo; /// 0        /// Index of font within TTF/OTF file
-        int OversampleH; /// 0 (2)    /// Rasterize at higher quality for sub-pixel positioning. 0 == auto == 1 or 2 depending on size. Note the difference between 2 and 3 is minimal. You can reduce this to 1 for large glyphs save memory. Read https://github.com/nothings/stb/blob/master/tests/oversample/README.md for details.
-        int OversampleV; /// 0 (1)    /// Rasterize at higher quality for sub-pixel positioning. 0 == auto == 1. This is not really useful as we don't use sub-pixel positions on the Y axis.
+        bool PixelSnapV; /// true     /// Align Scaled GlyphOffset.y to pixel boundaries.
+        ImS8 FontNo; /// 0        /// Index of font within TTF/OTF file
+        ImS8 OversampleH; /// 0 (2)    /// Rasterize at higher quality for sub-pixel positioning. 0 == auto == 1 or 2 depending on size. Note the difference between 2 and 3 is minimal. You can reduce this to 1 for large glyphs save memory. Read https://github.com/nothings/stb/blob/master/tests/oversample/README.md for details.
+        ImS8 OversampleV; /// 0 (1)    /// Rasterize at higher quality for sub-pixel positioning. 0 == auto == 1. This is not really useful as we don't use sub-pixel positions on the Y axis.
         float SizePixels; ///          /// Size in pixels for rasterizer (more or less maps to the resulting font height).
-        ImVec2 GlyphExtraSpacing; /// 0, 0     /// Extra spacing (in pixels) between glyphs when rendered: essentially add to glyph->AdvanceX. Only X axis is supported for now.
-        ImVec2 GlyphOffset; /// 0, 0     /// Offset all glyphs from this font input.
-        const(ImWchar)* GlyphRanges; /// NULL     /// THE ARRAY DATA NEEDS TO PERSIST AS LONG AS THE FONT IS ALIVE. Pointer to a user-provided list of Unicode range (2 value per range, values are inclusive, zero-terminated list).
-        float GlyphMinAdvanceX; /// 0        /// Minimum AdvanceX for glyphs, set Min to align font icons, set both Min/Max to enforce mono-space font
+        const(ImWchar)* GlyphRanges; /// NULL     /// *LEGACY* THE ARRAY DATA NEEDS TO PERSIST AS LONG AS THE FONT IS ALIVE. Pointer to a user-provided list of Unicode range (2 value per range, values are inclusive, zero-terminated list).
+        const(ImWchar)* GlyphExcludeRanges; /// NULL     /// Pointer to a VERY SHORT user-provided list of Unicode range (2 value per range, values are inclusive, zero-terminated list). This is very close to GlyphRanges[] but designed to exclude ranges from a font source, when merging fonts with overlapping glyphs. Use "Input Glyphs Overlap Detection Tool" to find about your overlapping ranges.
+         
+            //ImVec2        GlyphExtraSpacing;      /// 0, 0     /// (REMOVED AT IT SEEMS LARGELY OBSOLETE. PLEASE REPORT IF YOU WERE USING THIS). Extra spacing (in pixels) between glyphs when rendered: essentially add to glyph->AdvanceX. Only X axis is supported for now.
+        ImVec2 GlyphOffset; /// 0, 0     /// Offset (in pixels) all glyphs from this font input. Absolute value for default size, other sizes will scale this value.
+        float GlyphMinAdvanceX; /// 0        /// Minimum AdvanceX for glyphs, set Min to align font icons, set both Min/Max to enforce mono-space font. Absolute value for default size, other sizes will scale this value.
         float GlyphMaxAdvanceX; /// FLT_MAX  /// Maximum AdvanceX for glyphs
-        uint FontBuilderFlags; /// 0        /// Settings for custom font builder. THIS IS BUILDER IMPLEMENTATION DEPENDENT. Leave as zero if unsure.
+        float GlyphExtraAdvanceX; /// 0        /// Extra spacing (in pixels) between glyphs. Please contact us if you are using this. /// FIXME-NEWATLAS: Intentionally unscaled
+        uint FontLoaderFlags; /// 0        /// Settings for custom font builder. THIS IS BUILDER IMPLEMENTATION DEPENDENT. Leave as zero if unsure.
+         
+            //unsigned int  FontBuilderFlags;       /// --       /// [Renamed in 1.92] Ue FontLoaderFlags.
         float RasterizerMultiply; /// 1.0f     /// Linearly brighten (>1.0f) or darken (<1.0f) font output. Brightening small fonts may be a good workaround to make them more readable. This is a silly thing we may remove in the future.
-        float RasterizerDensity; /// 1.0f     /// DPI scale for rasterization, not altering other font metrics: make it easy to swap between e.g. a 100% and a 400% fonts for a zooming display. IMPORTANT: If you increase this it is expected that you increase font scale accordingly, otherwise quality may look lowered.
+        float RasterizerDensity; /// 1.0f     /// [LEGACY: this only makes sense when ImGuiBackendFlags_RendererHasTextures is not supported] DPI scale multiplier for rasterization. Not altering other font metrics: makes it easy to swap between e.g. a 100% and a 400% fonts for a zooming display, or handle Retina screen. IMPORTANT: If you change this it is expected that you increase/decrease font scale roughly to the inverse of this, otherwise quality may look lowered.
         ImWchar EllipsisChar; /// 0        /// Explicitly specify Unicode codepoint of ellipsis character. When fonts are being merged first specified ellipsis will be used.
              /// [Internal]
-        char[40] Name; /// Name (strictly to ease debugging)
-        ImFont* DstFont;
+        ImFontFlags Flags; /// Font flags (don't use just yet, will be exposed in upcoming 1.92.X updates)
+        ImFont* DstFont; /// Target font (as we merging fonts, multiple ImFontConfig may target the same font)
+        const(ImFontLoader)* FontLoader; /// Custom font backend for this source (other use one stored in ImFontAtlas)
+        void* FontLoaderData; /// Font loader opaque storage (per font config)
     }
 
     /// Status storage for the last submitted item
@@ -3077,7 +3427,7 @@ extern (C) {
     /// [Internal] For use by ImDrawList
     struct ImDrawCmdHeader {
         ImVec4 ClipRect;
-        ImTextureID TextureId;
+        ImTextureRef TexRef;
         uint VtxOffset;
     }
 
@@ -3086,16 +3436,20 @@ extern (C) {
     /// Typically one ImGui context would create and maintain one of this.
     /// You may want to create your own instance of you try to ImDrawList completely without ImGui. In that case, watch out for future changes to this structure.
     struct ImDrawListSharedData {
-        ImVec2 TexUvWhitePixel; /// UV of white pixel in the atlas
-        const(ImVec4)* TexUvLines; /// UV of anti-aliased lines in the atlas
-        ImFont* Font; /// Current/default font (optional, for simplified AddText overload)
-        float FontSize; /// Current/default font size (optional, for simplified AddText overload)
-        float FontScale; /// Current/default font scale (== FontSize / Font->FontSize)
+        ImVec2 TexUvWhitePixel; /// UV of white pixel in the atlas (== FontAtlas->TexUvWhitePixel)
+        const(ImVec4)* TexUvLines; /// UV of anti-aliased lines in the atlas (== FontAtlas->TexUvLines)
+        ImFontAtlas* FontAtlas; /// Current font atlas
+        ImFont* Font; /// Current font (used for simplified AddText overload)
+        float FontSize; /// Current font size (used for for simplified AddText overload)
+        float FontScale; /// Current font scale (== FontSize / Font->FontSize)
         float CurveTessellationTol; /// Tessellation tolerance when using PathBezierCurveTo()
         float CircleSegmentMaxError; /// Number of circle segments to use per pixel of radius for AddCircle() etc
-        ImVec4 ClipRectFullscreen; /// Value for PushClipRectFullscreen()
+        float InitialFringeScale; /// Initial scale to apply to AA fringe
         ImDrawListFlags InitialFlags; /// Initial flags at the beginning of the frame (it is possible to alter flags on a per-drawlist basis afterwards)
+        ImVec4 ClipRectFullscreen; /// Value for PushClipRectFullscreen()
         ImVector!(ImVec2) TempBuffer; /// Temporary write buffer
+        ImVector!(ImDrawList*) DrawLists; /// All draw lists associated to this ImDrawListSharedData
+        ImGuiContext* Context; /// [OPTIONAL] Link to Dear ImGui context. 99% of ImDrawList/ImFontAtlas can function without an ImGui context, but this facilitate handling one legacy edge case.
              /// Lookup tables
         ImVec2[48] ArcFastVtx; /// Sample points on the quarter of the circle.
         float ArcFastRadiusCutoff; /// Cutoff radius after which arc drawing will fallback to slower PathArcTo()
@@ -3114,14 +3468,15 @@ extern (C) {
     /// as this is one of the oldest structure exposed by the library! Basically, ImDrawList == CmdList)
     struct ImDrawData {
         bool Valid; /// Only valid after Render() is called and before the next NewFrame() is called.
-        int CmdListsCount; /// Number of ImDrawList* to render
+        int CmdListsCount; /// Number of ImDrawList* to render. (== CmdLists.Size). Exists for legacy reason.
         int TotalIdxCount; /// For convenience, sum of all ImDrawList's IdxBuffer.Size
         int TotalVtxCount; /// For convenience, sum of all ImDrawList's VtxBuffer.Size
         ImVector!(ImDrawList*) CmdLists; /// Array of ImDrawList* to render. The ImDrawLists are owned by ImGuiContext and only pointed to from here.
         ImVec2 DisplayPos; /// Top-left position of the viewport to render (== top-left of the orthogonal projection matrix to use) (== GetMainViewport()->Pos for the main viewport, == (0.0) in most single-viewport applications)
         ImVec2 DisplaySize; /// Size of the viewport to render (== GetMainViewport()->Size for the main viewport, == io.DisplaySize in most single-viewport applications)
-        ImVec2 FramebufferScale; /// Amount of pixels for each unit of DisplaySize. Based on io.DisplayFramebufferScale. Generally (1,1) on normal display, (2,2) on OSX with Retina display.
+        ImVec2 FramebufferScale; /// Amount of pixels for each unit of DisplaySize. Copied from viewport->FramebufferScale (== io.DisplayFramebufferScale for main viewport). Generally (1,1) on normal display, (2,2) on OSX with Retina display.
         ImGuiViewport* OwnerViewport; /// Viewport carrying the ImDrawData instance, might be of use to the renderer (generally not).
+        ImVector!(ImTextureData*)* Textures; /// List of textures to update. Most of the times the list is shared by all ImDrawData, has only 1 texture and it doesn't need any update. This almost always points to ImGui::GetPlatformIO().Textures[]. May be overriden or set to NULL if you want to manually update textures.
     }
 
     /// Internal state of the currently focused/edited text input box
@@ -3167,14 +3522,24 @@ extern (C) {
         ImVector!(char) TextA; /// text buffer
     }
 
+    /// Coordinates of a rectangle within a texture.
+    /// When a texture is in ImTextureStatus_WantUpdates state, we provide a list of individual rectangles to copy to the graphics system.
+    /// You may use ImTextureData::Updates[] for the list, or ImTextureData::UpdateBox for a single bounding box.
+    struct ImTextureRect {
+        ushort x; /// Upper-left coordinates of rectangle to update
+        ushort y; /// Upper-left coordinates of rectangle to update
+        ushort w; /// Size of rectangle to update (in pixels)
+        ushort h; /// Size of rectangle to update (in pixels)
+    }
+
     /// Typically, 1 command = 1 GPU draw call (unless command is a callback)
     /// - VtxOffset: When 'io.BackendFlags & ImGuiBackendFlags_RendererHasVtxOffset' is enabled,
     ///   this fields allow us to render meshes larger than 64K vertices while keeping 16-bit indices.
     ///   Backends made for <1.71. will typically ignore the VtxOffset fields.
-    /// - The ClipRect/TextureId/VtxOffset fields must be contiguous as we memcmp() them together (this is asserted for).
+    /// - The ClipRect/TexRef/VtxOffset fields must be contiguous as we memcmp() them together (this is asserted for).
     struct ImDrawCmd {
         ImVec4 ClipRect; /// 4*4  /// Clipping rectangle (x1, y1, x2, y2). Subtract ImDrawData->DisplayPos to get clipping rectangle in "viewport" coordinates
-        ImTextureID TextureId; /// 4-8  /// User-provided texture ID. Set by user in ImfontAtlas::SetTexID() for fonts or passed to Image*() functions. Ignore if never using images or multiple fonts atlas.
+        ImTextureRef TexRef; /// 16   /// Reference to a font/texture atlas (where backend called ImTextureData::SetTexID()) or to a user-provided texture ID (via e.g. ImGui::Image() calls). Both will lead to a ImTextureID value.
         uint VtxOffset; /// 4    /// Start offset in vertex buffer. ImGuiBackendFlags_RendererHasVtxOffset: always 0, otherwise may be >0 to support meshes larger than 64K vertices with 16-bit indices.
         uint IdxOffset; /// 4    /// Start offset in index buffer.
         uint ElemCount; /// 4    /// Number of indices (multiple of 3) to be rendered as triangles. Vertices are stored in the callee ImDrawList's vtx_buffer[] array, indices in idx_buffer[].
@@ -3200,6 +3565,7 @@ extern (C) {
         ImVector!(ImGuiStackLevelInfo) Results;
         bool CopyToClipboardOnCtrlC;
         float CopyToClipboardLastTime;
+        ImGuiTextBuffer ResultPathBuf;
     }
 
     /// Helper: ImGuiTextIndex
@@ -3207,6 +3573,12 @@ extern (C) {
     struct ImGuiTextIndex {
         ImVector!(int) LineOffsets;
         int EndOffset; /// Because we don't own text buffer we need to maintain EndOffset (may bake in LineOffsets?)
+    }
+
+    struct ImFontStackData {
+        ImFont* Font;
+        float FontSizeBeforeScaling; /// ~~ style.FontSizeBase
+        float FontSizeAfterScaling; /// ~~ g.FontSize
     }
 
     struct ImGuiBoxSelectState {
@@ -3218,7 +3590,12 @@ extern (C) {
         bool IsStartedFromVoid; /// Starting click was not from an item.
         bool IsStartedSetNavIdOnce;
         bool RequestClear;
-        ImGuiKeyChord KeyMods; /// Latched key-mods for box-select logic.
+        // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
+        //ImGuiKeyChord KeyMods : 16; /// Latched key-mods for box-select logic.
+        ImGuiKeyChord bitfield_0;
+        @property ImGuiKeyChord KeyMods() { return GetValue!ImGuiKeyChord(bitfield_0, 0, 16); }
+        @property void KeyMods(ImGuiKeyChord aValue) { bitfield_0 = SetValue(bitfield_0, 0, 16, aValue); };
+        static assert((bitfield_0.sizeof * 8) >= 16.sizeof);
         ImVec2 StartPosRel; /// Start position in window-contents relative space (to support scrolling)
         ImVec2 EndPosRel; /// End position in window-contents relative space
         ImVec2 ScrollAccum; /// Scrolling accumulator (to behave at high-frame spaces)
@@ -3260,20 +3637,54 @@ extern (C) {
         ImGuiID SelectedTabId; /// [Leaf node only] Which of our tab/window is selected.
         ImGuiID WantCloseTabId; /// [Leaf node only] Set when closing a specific tab/window.
         ImGuiID RefViewportId; /// Reference viewport ID from visible window when HostWindow == NULL.
-        ImGuiDataAuthority AuthorityForPos;
-        ImGuiDataAuthority AuthorityForSize;
-        ImGuiDataAuthority AuthorityForViewport;
-        bool IsVisible; /// Set to false when the node is hidden (usually disabled as it has no active window)
-        bool IsFocused;
-        bool IsBgDrawnThisFrame;
-        bool HasCloseButton; /// Provide space for a close button (if any of the docked window has one). Note that button may be hidden on window without one.
-        bool HasWindowMenuButton;
-        bool HasCentralNodeChild;
-        bool WantCloseAll; /// Set when closing all tabs at once.
-        bool WantLockSizeOnce;
-        bool WantMouseMove; /// After a node extraction we need to transition toward moving the newly created host window
-        bool WantHiddenTabBarUpdate;
-        bool WantHiddenTabBarToggle;
+        // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
+        //ImGuiDataAuthority AuthorityForPos : 3;
+        //ImGuiDataAuthority AuthorityForSize : 3;
+        //ImGuiDataAuthority AuthorityForViewport : 3;
+        ImGuiDataAuthority bitfield_0;
+        @property ImGuiDataAuthority AuthorityForPos() { return GetValue!ImGuiDataAuthority(bitfield_0, 0, 3); }
+        @property void AuthorityForPos(ImGuiDataAuthority aValue) { bitfield_0 = SetValue(bitfield_0, 0, 3, aValue); };
+        @property ImGuiDataAuthority AuthorityForSize() { return GetValue!ImGuiDataAuthority(bitfield_0, 3, 3); }
+        @property void AuthorityForSize(ImGuiDataAuthority aValue) { bitfield_0 = SetValue(bitfield_0, 3, 3, aValue); };
+        @property ImGuiDataAuthority AuthorityForViewport() { return GetValue!ImGuiDataAuthority(bitfield_0, 6, 3); }
+        @property void AuthorityForViewport(ImGuiDataAuthority aValue) { bitfield_0 = SetValue(bitfield_0, 6, 3, aValue); };
+        static assert((bitfield_0.sizeof * 8) >= 9.sizeof);
+        // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
+        //bool IsVisible : 1; /// Set to false when the node is hidden (usually disabled as it has no active window)
+        //bool IsFocused : 1;
+        //bool IsBgDrawnThisFrame : 1;
+        //bool HasCloseButton : 1; /// Provide space for a close button (if any of the docked window has one). Note that button may be hidden on window without one.
+        //bool HasWindowMenuButton : 1;
+        //bool HasCentralNodeChild : 1;
+        //bool WantCloseAll : 1; /// Set when closing all tabs at once.
+        //bool WantLockSizeOnce : 1;
+        //bool WantMouseMove : 1; /// After a node extraction we need to transition toward moving the newly created host window
+        //bool WantHiddenTabBarUpdate : 1;
+        //bool WantHiddenTabBarToggle : 1;
+        bool bitfield_1;
+        @property bool IsVisible() { return GetValue!bool(bitfield_1, 0, 1); }
+        @property void IsVisible(bool aValue) { bitfield_1 = SetValue(bitfield_1, 0, 1, aValue); };
+        @property bool IsFocused() { return GetValue!bool(bitfield_1, 1, 1); }
+        @property void IsFocused(bool aValue) { bitfield_1 = SetValue(bitfield_1, 1, 1, aValue); };
+        @property bool IsBgDrawnThisFrame() { return GetValue!bool(bitfield_1, 2, 1); }
+        @property void IsBgDrawnThisFrame(bool aValue) { bitfield_1 = SetValue(bitfield_1, 2, 1, aValue); };
+        @property bool HasCloseButton() { return GetValue!bool(bitfield_1, 3, 1); }
+        @property void HasCloseButton(bool aValue) { bitfield_1 = SetValue(bitfield_1, 3, 1, aValue); };
+        @property bool HasWindowMenuButton() { return GetValue!bool(bitfield_1, 4, 1); }
+        @property void HasWindowMenuButton(bool aValue) { bitfield_1 = SetValue(bitfield_1, 4, 1, aValue); };
+        @property bool HasCentralNodeChild() { return GetValue!bool(bitfield_1, 5, 1); }
+        @property void HasCentralNodeChild(bool aValue) { bitfield_1 = SetValue(bitfield_1, 5, 1, aValue); };
+        @property bool WantCloseAll() { return GetValue!bool(bitfield_1, 6, 1); }
+        @property void WantCloseAll(bool aValue) { bitfield_1 = SetValue(bitfield_1, 6, 1, aValue); };
+        @property bool WantLockSizeOnce() { return GetValue!bool(bitfield_1, 7, 1); }
+        @property void WantLockSizeOnce(bool aValue) { bitfield_1 = SetValue(bitfield_1, 7, 1, aValue); };
+        @property bool WantMouseMove() { return GetValue!bool(bitfield_1, 8, 1); }
+        @property void WantMouseMove(bool aValue) { bitfield_1 = SetValue(bitfield_1, 8, 1, aValue); };
+        @property bool WantHiddenTabBarUpdate() { return GetValue!bool(bitfield_1, 9, 1); }
+        @property void WantHiddenTabBarUpdate(bool aValue) { bitfield_1 = SetValue(bitfield_1, 9, 1, aValue); };
+        @property bool WantHiddenTabBarToggle() { return GetValue!bool(bitfield_1, 10, 1); }
+        @property void WantHiddenTabBarToggle(bool aValue) { bitfield_1 = SetValue(bitfield_1, 10, 1, aValue); };
+        static assert((bitfield_1.sizeof * 8) >= 11.sizeof);
     }
 
     /// Helper: Key->Value storage
@@ -3301,21 +3712,6 @@ extern (C) {
         char[256] InputBuf;
         ImVector!(ImGuiTextRange) Filters;
         int CountGrep;
-    }
-
-    /// See ImFontAtlas::AddCustomRectXXX functions.
-    struct ImFontAtlasCustomRect {
-        ushort X; /// Output   /// Packed position in Atlas
-        ushort Y; /// Output   /// Packed position in Atlas
-             /// [Internal]
-        ushort Width; /// Input    /// Desired rectangle dimension
-             /// [Internal]
-        ushort Height; /// Input    /// Desired rectangle dimension
-        uint GlyphID; /// Input    /// For custom font glyphs only (ID < 0x110000)
-        uint GlyphColored; /// Input  /// For custom font glyphs only: glyph is colored, removed tinting.
-        float GlyphAdvanceX; /// Input    /// For custom font glyphs only: glyph xadvance
-        ImVec2 GlyphOffset; /// Input    /// For custom font glyphs only: glyph display offset
-        ImFont* Font; /// Input    /// For custom font glyphs only: target font
     }
 
     /// Storage for a tab bar (sizeof() 160 bytes)
@@ -3369,12 +3765,6 @@ extern (C) {
         float y;
     }
 
-    struct ImGuiDataVarInfo {
-        ImGuiDataType Type;
-        ImU32 Count; /// 1+
-        ImU32 Offset; /// Offset in parent structure
-    }
-
     /// Data used by IsItemDeactivated()/IsItemDeactivatedAfterEdit() functions
     struct ImGuiDeactivatedItemData {
         ImGuiID ID;
@@ -3387,6 +3777,21 @@ extern (C) {
         ImVec2 pos;
         ImVec2 uv;
         ImU32 col;
+    }
+
+    /// Data available to potential texture post-processing functions
+    struct ImFontAtlasPostProcessData {
+        ImFontAtlas* FontAtlas;
+        ImFont* Font;
+        ImFontConfig* FontSrc;
+        ImFontBaked* FontBaked;
+        ImFontGlyph* Glyph;
+             /// Pixel data
+        char* Pixels;
+        ImTextureFormat Format;
+        int Pitch;
+        int Width;
+        int Height;
     }
 
     /// Stacked storage data for BeginGroup()/EndGroup()
@@ -3414,7 +3819,7 @@ extern (C) {
         void function(ImGuiContext* ctx,const(char)* text) Platform_SetClipboardTextFn;
         void* Platform_ClipboardUserData;
              /// Optional: Open link/folder/file in OS Shell
-            /// (default to use ShellExecuteA() on Windows, system() on Linux/Mac)
+            /// (default to use ShellExecuteW() on Windows, system() on Linux/Mac)
         bool function(ImGuiContext* ctx,const(char)* path) Platform_OpenInShellFn;
         void* Platform_OpenInShellUserData;
              /// Optional: Notify OS Input Method Editor of the screen position of your cursor for text input position (e.g. when using Japanese/Chinese IME on Windows)
@@ -3424,6 +3829,9 @@ extern (C) {
              /// Optional: Platform locale
             /// [Experimental] Configure decimal point e.g. '.' or ',' useful for some languages (e.g. German), generally pulled from *localeconv()->decimal_point
         ImWchar Platform_LocaleDecimalPoint; /// '.'
+             /// Optional: Maximum texture size supported by renderer (used to adjust how we size textures). 0 if not known.
+        int Renderer_TextureMaxWidth;
+        int Renderer_TextureMaxHeight;
              /// Written by some backends during ImGui_ImplXXXX_RenderDrawData() call to point backend_specific ImGui_ImplXXXX_RenderState* structure.
         void* Renderer_RenderState;
              /// Platform Backend functions (e.g. Win32, GLFW, SDL) ------------------- Called by -----
@@ -3434,6 +3842,7 @@ extern (C) {
         ImVec2 function(ImGuiViewport* vp) Platform_GetWindowPos; /// N . . . .  //
         void function(ImGuiViewport* vp,ImVec2 size) Platform_SetWindowSize; /// . . U . .  /// Set platform window client area size (ignoring OS decorations such as OS title bar etc.)
         ImVec2 function(ImGuiViewport* vp) Platform_GetWindowSize; /// N . . . .  /// Get platform window client area size
+        ImVec2 function(ImGuiViewport* vp) Platform_GetWindowFramebufferScale; /// N . . . .  /// Return viewport density. Always 1,1 on Windows, often 2,2 on Retina display on macOS/iOS. MUST BE INTEGER VALUES.
         void function(ImGuiViewport* vp) Platform_SetWindowFocus; /// N . . . .  /// Move window to front and set input focus
         bool function(ImGuiViewport* vp) Platform_GetWindowFocus; /// . . U . .  //
         bool function(ImGuiViewport* vp) Platform_GetWindowMinimized; /// N . . . .  /// Get platform window minimized state. When minimized, we generally won't attempt to get/set size and contents will be culled more easily
@@ -3456,6 +3865,9 @@ extern (C) {
             /// - Updated by: app/backend. Update every frame to dynamically support changing monitor or DPI configuration.
             /// - Used by: dear imgui to query DPI info, clamp popups/tooltips within same monitor and not have them straddle monitors.
         ImVector!(ImGuiPlatformMonitor) Monitors;
+             /// Textures list (the list is updated by calling ImGui::EndFrame or ImGui::Render)
+            /// The ImGui_ImplXXXX_RenderDrawData() function of each backend generally access this via ImDrawData::Textures which points to this. The array is available here mostly because backends will want to destroy textures on shutdown.
+        ImVector!(ImTextureData*) Textures; /// List of textures used by Dear ImGui (most often 1) + contents of external texture list is automatically appended into this.
              /// Viewports list (the list is updated by calling ImGui::EndFrame or ImGui::Render)
             /// (in the future we will attempt to organize this feature to remove the need for a "main viewport")
         ImVector!(ImGuiViewport*) Viewports; /// Main viewports, followed by all secondary viewports.
@@ -3489,12 +3901,46 @@ extern (C) {
         ImDrawListSplitter Splitter;
     }
 
+    /// Specs and pixel storage for a texture used by Dear ImGui.
+    /// This is only useful for (1) core library and (2) backends. End-user/applications do not need to care about this.
+    /// Renderer Backends will create a GPU-side version of this.
+    /// Why does we store two identifiers: TexID and BackendUserData?
+    /// - ImTextureID    TexID           = lower-level identifier stored in ImDrawCmd. ImDrawCmd can refer to textures not created by the backend, and for which there's no ImTextureData.
+    /// - void*          BackendUserData = higher-level opaque storage for backend own book-keeping. Some backends may have enough with TexID and not need both.
+     /// In columns below: who reads/writes each fields? 'r'=read, 'w'=write, 'core'=main library, 'backend'=renderer backend
+    struct ImTextureData {
+         
+            //------------------------------------------ core / backend ---------------------------------------
+        int UniqueID; /// w    -   /// Sequential index to facilitate identifying a texture when debugging/printing. Unique per atlas.
+        ImTextureStatus Status; /// rw   rw  /// ImTextureStatus_OK/_WantCreate/_WantUpdates/_WantDestroy. Always use SetStatus() to modify!
+        void* BackendUserData; /// -    rw  /// Convenience storage for backend. Some backends may have enough with TexID.
+        ImTextureID TexID; /// r    w   /// Backend-specific texture identifier. Always use SetTexID() to modify! The identifier will stored in ImDrawCmd::GetTexID() and passed to backend's RenderDrawData function.
+        ImTextureFormat Format; /// w    r   /// ImTextureFormat_RGBA32 (default) or ImTextureFormat_Alpha8
+        int Width; /// w    r   /// Texture width
+        int Height; /// w    r   /// Texture height
+        int BytesPerPixel; /// w    r   /// 4 or 1
+        char* Pixels; /// w    r   /// Pointer to buffer holding 'Width*Height' pixels and 'Width*Height*BytesPerPixels' bytes.
+        ImTextureRect UsedRect; /// w    r   /// Bounding box encompassing all past and queued Updates[].
+        ImTextureRect UpdateRect; /// w    r   /// Bounding box encompassing all queued Updates[].
+        ImVector!(ImTextureRect) Updates; /// w    r   /// Array of individual updates.
+        int UnusedFrames; /// w    r   /// In order to facilitate handling Status==WantDestroy in some backend: this is a count successive frames where the texture was not used. Always >0 when Status==WantDestroy.
+        ushort RefCount; /// w    r   /// Number of contexts using this texture. Used during backend shutdown.
+        bool UseColors; /// w    r   /// Tell whether our texture data is known to use colors (rather than just white + alpha).
+        bool WantDestroyNextFrame; /// rw   -   /// [Internal] Queued to set ImTextureStatus_WantDestroy next frame. May still be used in the current frame.
+    }
+
     struct ImGuiStyle {
+         
+            /// ImGui::GetFontSize() == FontSizeBase * (FontScaleMain * FontScaleDpi * other_scaling_factors)
+        float FontSizeBase; /// Current base font size before external scaling factors are applied. Use PushFont()/PushFontSize() to modify. Use ImGui::GetFontSize() to obtain scaled value.
+        float FontScaleMain; /// Main scale factor. May be set by application once, or exposed to end-user.
+        float FontScaleDpi; /// Additional scale factor from viewport/monitor contents scale. When io.ConfigDpiScaleFonts is enabled, this is automatically overwritten when changing monitor DPI.
         float Alpha; /// Global alpha applies to everything in Dear ImGui.
         float DisabledAlpha; /// Additional alpha multiplier applied by BeginDisabled(). Multiply over current value of Alpha.
         ImVec2 WindowPadding; /// Padding within a window.
         float WindowRounding; /// Radius of window corners rounding. Set to 0.0f to have rectangular windows. Large values tend to lead to variety of artifacts and are not recommended.
         float WindowBorderSize; /// Thickness of border around windows. Generally set to 0.0f or 1.0f. (Other values are not well tested and more CPU/GPU costly).
+        float WindowBorderHoverPadding; /// Hit-testing extent outside/inside resizing border. Also extend determination of hovered window. Generally meaningfully larger than WindowBorderSize to make it easy to reach borders.
         ImVec2 WindowMinSize; /// Minimum window size. This is a global setting. If you want to constrain individual windows, use SetNextWindowSizeConstraints().
         ImVec2 WindowTitleAlign; /// Alignment for title bar text. Defaults to (0.0f,0.5f) for left-aligned,vertically centered.
         ImGuiDir WindowMenuButtonPosition; /// Side of the collapsing/docking button in the title bar (None/Left/Right). Defaults to ImGuiDir_Left.
@@ -3516,13 +3962,18 @@ extern (C) {
         float GrabMinSize; /// Minimum width/height of a grab box for slider/scrollbar.
         float GrabRounding; /// Radius of grabs corners rounding. Set to 0.0f to have rectangular slider grabs.
         float LogSliderDeadzone; /// The size in pixels of the dead-zone around zero on logarithmic sliders that cross zero.
+        float ImageBorderSize; /// Thickness of border around Image() calls.
         float TabRounding; /// Radius of upper corners of a tab. Set to 0.0f to have rectangular tabs.
         float TabBorderSize; /// Thickness of border around tabs.
-        float TabMinWidthForCloseButton; /// Minimum width for close button to appear on an unselected tab when hovered. Set to 0.0f to always show when hovering, set to FLT_MAX to never show close button unless selected.
+        float TabCloseButtonMinWidthSelected; /// -1: always visible. 0.0f: visible when hovered. >0.0f: visible when hovered if minimum width.
+        float TabCloseButtonMinWidthUnselected; /// -1: always visible. 0.0f: visible when hovered. >0.0f: visible when hovered if minimum width. FLT_MAX: never show close button when unselected.
         float TabBarBorderSize; /// Thickness of tab-bar separator, which takes on the tab active color to denote focus.
         float TabBarOverlineSize; /// Thickness of tab-bar overline, which highlights the selected tab-bar.
         float TableAngledHeadersAngle; /// Angle of angled headers (supported values range from -50.0f degrees to +50.0f degrees).
         ImVec2 TableAngledHeadersTextAlign; /// Alignment of angled headers within the cell
+        ImGuiTreeNodeFlags TreeLinesFlags; /// Default way to draw lines connecting TreeNode hierarchy. ImGuiTreeNodeFlags_DrawLinesNone or ImGuiTreeNodeFlags_DrawLinesFull or ImGuiTreeNodeFlags_DrawLinesToNodes.
+        float TreeLinesSize; /// Thickness of outlines when using ImGuiTreeNodeFlags_DrawLines.
+        float TreeLinesRounding; /// Radius of lines connecting child nodes to the vertical line.
         ImGuiDir ColorButtonPosition; /// Side of the color button in the ColorEdit4 widget (left/right). Defaults to ImGuiDir_Right.
         ImVec2 ButtonTextAlign; /// Alignment of button text when button is larger than text. Defaults to (0.5f, 0.5f) (centered).
         ImVec2 SelectableTextAlign; /// Alignment of selectable text. Defaults to (0.0f, 0.0f) (top-left aligned). It's generally important to keep this left-aligned if you want to lay multiple items on a same line.
@@ -3538,6 +3989,7 @@ extern (C) {
         bool AntiAliasedFill; /// Enable anti-aliased edges around filled shapes (rounded rectangles, circles, etc.). Disable if you are really tight on CPU/GPU. Latched at the beginning of the frame (copied to ImDrawList).
         float CurveTessellationTol; /// Tessellation tolerance when using PathBezierCurveTo() without a specific number of segments. Decrease for highly tessellated curves (higher quality, more polygons), increase to reduce quality.
         float CircleTessellationMaxError; /// Maximum error (in pixels) allowed when using AddCircle()/AddCircleFilled() or drawing rounded corner rectangles with no explicit segment count specified. Decrease for higher quality but more geometry.
+             /// Colors
         ImVec4[ImGuiCol.COUNT] Colors;
              /// Behaviors
             /// (It is possible to modify those fields mid-frame if specific behavior need it, unlike e.g. configuration fields in ImGuiIO)
@@ -3546,6 +3998,35 @@ extern (C) {
         float HoverDelayNormal; /// Delay for IsItemHovered(ImGuiHoveredFlags_DelayNormal). "
         ImGuiHoveredFlags HoverFlagsForTooltipMouse; /// Default flags when using IsItemHovered(ImGuiHoveredFlags_ForTooltip) or BeginItemTooltip()/SetItemTooltip() while using mouse.
         ImGuiHoveredFlags HoverFlagsForTooltipNav; /// Default flags when using IsItemHovered(ImGuiHoveredFlags_ForTooltip) or BeginItemTooltip()/SetItemTooltip() while using keyboard/gamepad.
+             /// [Internal]
+        float _MainScale; /// FIXME-WIP: Reference scale, as applied by ScaleAllSizes().
+        float _NextFrameFontSizeBase; /// FIXME: Temporary hack until we finish remaining work.
+    }
+
+    /// Internal storage for incrementally packing and building a ImFontAtlas
+    struct ImFontAtlasBuilder {
+        stbrp_context_opaque PackContext; /// Actually 'stbrp_context' but we don't want to define this in the header file.
+        ImVector!(stbrp_node_im) PackNodes;
+        ImVector!(ImTextureRect) Rects;
+        ImVector!(ImFontAtlasRectEntry) RectsIndex; /// ImFontAtlasRectId -> index into Rects[]
+        ImVector!(char) TempBuffer; /// Misc scratch buffer
+        int RectsIndexFreeListStart; /// First unused entry
+        int RectsPackedCount; /// Number of packed rectangles.
+        int RectsPackedSurface; /// Number of packed pixels. Used when compacting to heuristically find the ideal texture size.
+        int RectsDiscardedCount;
+        int RectsDiscardedSurface;
+        int FrameCount; /// Current frame count
+        ImVec2i MaxRectSize; /// Largest rectangle to pack (de-facto used as a "minimum texture size")
+        ImVec2i MaxRectBounds; /// Bottom-right most used pixels
+        bool LockDisableResize; /// Disable resizing texture
+        bool PreloadedAllGlyphsRanges; /// Set when missing ImGuiBackendFlags_RendererHasTextures features forces atlas to preload everything.
+             /// Cache of all ImFontBaked
+        ImStableVector!(ImFontBaked, 32) BakedPool;
+        ImGuiStorage BakedMap; /// BakedId --> ImFontBaked*
+        int BakedDiscardedCount;
+             /// Custom rectangle identifiers
+        ImFontAtlasRectId PackIdMouseCursors; /// White pixel + mouse cursors. Also happen to be fallback in case of packing failure.
+        ImFontAtlasRectId PackIdLinesTexData;
     }
 
     struct ImGuiDebugAllocEntry {
@@ -3556,16 +4037,18 @@ extern (C) {
 
     struct ImGuiContext {
         bool Initialized;
-        bool FontAtlasOwnedByContext; /// IO.Fonts-> is owned by the ImGuiContext and will be destructed along with it.
         ImGuiIO IO;
         ImGuiPlatformIO PlatformIO;
         ImGuiStyle Style;
         ImGuiConfigFlags ConfigFlagsCurrFrame; /// = g.IO.ConfigFlags at the time of NewFrame()
         ImGuiConfigFlags ConfigFlagsLastFrame;
-        ImFont* Font; /// (Shortcut) == FontStack.empty() ? IO.Font : FontStack.back()
-        float FontSize; /// (Shortcut) == FontBaseSize * g.CurrentWindow->FontWindowScale == window->FontSize(). Text height for current window.
-        float FontBaseSize; /// (Shortcut) == IO.FontGlobalScale * Font->Scale * Font->FontSize. Base text height.
-        float FontScale; /// == FontSize / Font->FontSize
+        ImVector!(ImFontAtlas*) FontAtlases; /// List of font atlases used by the context (generally only contains g.IO.Fonts aka the main font atlas)
+        ImFont* Font; /// Currently bound font. (== FontStack.back().Font)
+        ImFontBaked* FontBaked; /// Currently bound font at currently bound size. (== Font->GetFontBaked(FontSize))
+        float FontSize; /// Currently bound font size == line height (== FontSizeBase + externals scales applied in the UpdateCurrentFontSize() function).
+        float FontSizeBase; /// Font size before scaling == style.FontSizeBase == value passed to PushFont() / PushFontSize() when specified.
+        float FontBakedScale; /// == FontBaked->Size / FontSize. Scale factor over baked size. Rarely used nowadays, very often == 1.0f.
+        float FontRasterizerDensity; /// Current font density. Used by all calls to GetFontBaked().
         float CurrentDpiScale; /// Current window/viewport DpiScale == CurrentViewport->DpiScale
         ImDrawListSharedData DrawListSharedData;
         double Time;
@@ -3592,7 +4075,7 @@ extern (C) {
         ImVector!(ImGuiWindowStackData) CurrentWindowStack;
         ImGuiStorage WindowsById; /// Map window's ImGuiID to ImGuiWindow*
         int WindowsActiveCount; /// Number of unique windows submitted by frame
-        ImVec2 WindowsHoverPadding; /// Padding around resizable windows for which hovering on counts as hovering the window == ImMax(style.TouchExtraPadding, WINDOWS_HOVER_PADDING).
+        float WindowsBorderHoverPadding; /// Padding around resizable windows for which hovering on counts as hovering the window == ImMax(style.TouchExtraPadding, style.WindowBorderHoverPadding). This isn't so multi-dpi friendly.
         ImGuiID DebugBreakInWindow; /// Set to break in Begin() call.
         ImGuiWindow* CurrentWindow; /// Window being drawn into
         ImGuiWindow* HoveredWindow; /// Window the mouse is hovering. Will typically catch mouse inputs.
@@ -3627,7 +4110,12 @@ extern (C) {
         bool ActiveIdHasBeenEditedBefore; /// Was the value associated to the widget Edited over the course of the Active state.
         bool ActiveIdHasBeenEditedThisFrame;
         bool ActiveIdFromShortcut;
-        int ActiveIdMouseButton;
+        // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
+        //int ActiveIdMouseButton : 8;
+        int bitfield_0;
+        @property int ActiveIdMouseButton() { return GetValue!int(bitfield_0, 0, 8); }
+        @property void ActiveIdMouseButton(int aValue) { bitfield_0 = SetValue(bitfield_0, 0, 8, aValue); };
+        static assert((bitfield_0.sizeof * 8) >= 8.sizeof);
         ImVec2 ActiveIdClickOffset; /// Clicked offset from upper-left corner, if applicable (currently only set by ButtonBehavior)
         ImGuiWindow* ActiveIdWindow;
         ImGuiInputSource ActiveIdSource; /// Activating source: ImGuiInputSource_Mouse OR ImGuiInputSource_Keyboard OR ImGuiInputSource_Gamepad
@@ -3661,7 +4149,7 @@ extern (C) {
         ImGuiCol DebugFlashStyleColorIdx; /// (Keep close to ColorStack to share cache line)
         ImVector!(ImGuiColorMod) ColorStack; /// Stack for PushStyleColor()/PopStyleColor() - inherited by Begin()
         ImVector!(ImGuiStyleMod) StyleVarStack; /// Stack for PushStyleVar()/PopStyleVar() - inherited by Begin()
-        ImVector!(ImFont*) FontStack; /// Stack for PushFont()/PopFont() - inherited by Begin()
+        ImVector!(ImFontStackData) FontStack; /// Stack for PushFont()/PopFont() - inherited by Begin()
         ImVector!(ImGuiFocusScopeData) FocusScopeStack; /// Stack for PushFocusScope()/PopFocusScope() - inherited by BeginChild(), pushed into by Begin()
         ImVector!(ImGuiItemFlags) ItemFlagsStack; /// Stack for PushItemFlag()/PopItemFlag() - inherited by Begin()
         ImVector!(ImGuiGroupData) GroupStack; /// Stack for BeginGroup()/EndGroup() - not inherited by Begin()
@@ -3734,6 +4222,7 @@ extern (C) {
         bool NavJustMovedToIsTabbing; /// Copy of ImGuiNavMoveFlags_IsTabbing. Maybe we should store whole flags.
         bool NavJustMovedToHasSelectionData; /// Copy of move result's ItemFlags & ImGuiItemFlags_HasSelectionUserData). Maybe we should just store ImGuiNavItemData.
              /// Navigation: Windowing (CTRL+TAB for list, or Menu button + keys or directional pads to move/resize)
+        bool ConfigNavWindowingWithGamepad; /// = true. Enable CTRL+TAB by holding ImGuiKey_GamepadFaceLeft (== ImGuiKey_NavGamepadMenu). When false, the button may still be used to toggle Menu layer.
         ImGuiKeyChord ConfigNavWindowingKeyNext; /// = ImGuiMod_Ctrl | ImGuiKey_Tab (or ImGuiMod_Super | ImGuiKey_Tab on OS X). For reconfiguration (see #4828)
         ImGuiKeyChord ConfigNavWindowingKeyPrev; /// = ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_Tab (or ImGuiMod_Super | ImGuiMod_Shift | ImGuiKey_Tab on OS X)
         ImGuiWindow* NavWindowingTarget; /// Target window when doing CTRL+Tab (or Pad Menu + FocusPrev/Next), this window is temporarily displayed top-most!
@@ -3741,6 +4230,7 @@ extern (C) {
         ImGuiWindow* NavWindowingListWindow; /// Internal window actually listing the CTRL+Tab contents
         float NavWindowingTimer;
         float NavWindowingHighlightAlpha;
+        ImGuiInputSource NavWindowingInputSource;
         bool NavWindowingToggleLayer;
         ImGuiKey NavWindowingToggleKey;
         ImVec2 NavWindowingAccumDeltaPos;
@@ -3802,7 +4292,8 @@ extern (C) {
              /// Widget state
         ImGuiInputTextState InputTextState;
         ImGuiInputTextDeactivatedState InputTextDeactivatedState;
-        ImFont InputTextPasswordFont;
+        ImFontBaked InputTextPasswordFontBackupBaked;
+        ImFontFlags InputTextPasswordFontBackupFlags;
         ImGuiID TempInputId; /// Temporary text input when CTRL+clicking on a slider, etc.
         ImGuiDataTypeStorage DataTypeZeroValue; /// 0 for all data types
         int BeginMenuDepth;
@@ -3833,11 +4324,11 @@ extern (C) {
         ImVector!(ImGuiID) MenusIdSubmittedThisFrame; /// A list of menu IDs that were rendered at least once
         ImGuiTypingSelectState TypingSelectState; /// State for GetTypingSelectRequest()
              /// Platform support
-        ImGuiPlatformImeData PlatformImeData; /// Data updated by current frame
+        ImGuiPlatformImeData PlatformImeData; /// Data updated by current frame. Will be applied at end of the frame. For some backends, this is required to have WantVisible=true in order to receive text message.
         ImGuiPlatformImeData PlatformImeDataPrev; /// Previous frame data. When changed we call the platform_io.Platform_SetImeDataFn() handler.
-        ImGuiID PlatformImeViewport;
              /// Extensions
             /// FIXME: We could provide an API to register one slot in an array held in ImGuiContext?
+        ImVector!(ImTextureData*) UserTextures; /// List of textures created/managed by user or third-party extension. Automatically appended into platform_io.Textures[].
         ImGuiDockContext DockContext;
         void function(ImGuiContext* ctx,ImGuiDockNode* node,ImGuiTabBar* tab_bar) DockNodeWindowMenuHandler;
              /// Settings
@@ -3901,7 +4392,7 @@ extern (C) {
         float FramerateSecPerFrameAccum;
         int WantCaptureMouseNextFrame; /// Explicit capture override via SetNextFrameWantCaptureMouse()/SetNextFrameWantCaptureKeyboard(). Default to -1.
         int WantCaptureKeyboardNextFrame; /// "
-        int WantTextInputNextFrame;
+        int WantTextInputNextFrame; /// Copied in EndFrame() from g.PlatformImeData.WanttextInput. Needs to be set for some backends (SDL3) to emit character inputs.
         ImVector!(char) TempBuffer; /// Temporary text buffer
         char[64] TempKeychordName;
     }
@@ -3949,9 +4440,18 @@ extern (C) {
         ImS8 NavLayerCurrent; /// ImGuiNavLayer in 1 byte
         ImU8 AutoFitQueue; /// Queue of 8 values for the next 8 frames to request auto-fit
         ImU8 CannotSkipItemsQueue; /// Queue of 8 values for the next 8 frames to disable Clipped/SkipItem
-        ImU8 SortDirection; /// ImGuiSortDirection_Ascending or ImGuiSortDirection_Descending
-        ImU8 SortDirectionsAvailCount; /// Number of available sort directions (0 to 3)
-        ImU8 SortDirectionsAvailMask; /// Mask of available sort directions (1-bit each)
+        // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
+        //ImU8 SortDirection : 2; /// ImGuiSortDirection_Ascending or ImGuiSortDirection_Descending
+        //ImU8 SortDirectionsAvailCount : 2; /// Number of available sort directions (0 to 3)
+        //ImU8 SortDirectionsAvailMask : 4; /// Mask of available sort directions (1-bit each)
+        ImU8 bitfield_0;
+        @property ImU8 SortDirection() { return GetValue!ImU8(bitfield_0, 0, 2); }
+        @property void SortDirection(ImU8 aValue) { bitfield_0 = SetValue(bitfield_0, 0, 2, aValue); };
+        @property ImU8 SortDirectionsAvailCount() { return GetValue!ImU8(bitfield_0, 2, 2); }
+        @property void SortDirectionsAvailCount(ImU8 aValue) { bitfield_0 = SetValue(bitfield_0, 2, 2, aValue); };
+        @property ImU8 SortDirectionsAvailMask() { return GetValue!ImU8(bitfield_0, 4, 4); }
+        @property void SortDirectionsAvailMask(ImU8 aValue) { bitfield_0 = SetValue(bitfield_0, 4, 4, aValue); };
+        static assert((bitfield_0.sizeof * 8) >= 8.sizeof);
         ImU8 SortDirectionsAvailList; /// Ordered list of available sort directions (2-bits each, total 8-bits)
     }
 
@@ -3963,6 +4463,29 @@ extern (C) {
         const ImGuiTableColumnSortSpecs* Specs; /// Pointer to sort spec array.
         int SpecsCount; /// Sort spec count. Most often 1. May be > 1 when ImGuiTableFlags_SortMulti is enabled. May be == 0 when ImGuiTableFlags_SortTristate is enabled.
         bool SpecsDirty; /// Set to true when specs have changed since last time! Use this to sort again, then clear the flag.
+    }
+
+    /// Packed rectangle lookup entry (we need an indirection to allow removing/reordering rectangles)
+    /// User are returned ImFontAtlasRectId values which are meant to be persistent.
+    /// We handle this with an indirection. While Rects[] may be in theory shuffled, compacted etc., RectsIndex[] cannot it is keyed by ImFontAtlasRectId.
+    /// RectsIndex[] is used both as an index into Rects[] and an index into itself. This is basically a free-list. See ImFontAtlasBuildAllocRectIndexEntry() code.
+    /// Having this also makes it easier to e.g. sort rectangles during repack.
+    struct ImFontAtlasRectEntry {
+        // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
+        //int TargetIndex : 20; /// When Used: ImFontAtlasRectId -> into Rects[]. When unused: index to next unused RectsIndex[] slot to consume free-list.
+        //int Generation : 10; /// Increased each time the entry is reused for a new rectangle.
+        int bitfield_0;
+        @property int TargetIndex() { return GetValue!int(bitfield_0, 0, 20); }
+        @property void TargetIndex(int aValue) { bitfield_0 = SetValue(bitfield_0, 0, 20, aValue); };
+        @property int Generation() { return GetValue!int(bitfield_0, 20, 10); }
+        @property void Generation(int aValue) { bitfield_0 = SetValue(bitfield_0, 20, 10, aValue); };
+        static assert((bitfield_0.sizeof * 8) >= 30.sizeof);
+        // This is a bitfield, we cannot replicate this in the D binding, but we're providing properties to easily access the fields.
+        //uint IsUsed : 1;
+        uint bitfield_1;
+        @property uint IsUsed() { return GetValue!uint(bitfield_1, 0, 1); }
+        @property void IsUsed(uint aValue) { bitfield_1 = SetValue(bitfield_1, 0, 1, aValue); };
+        static assert((bitfield_1.sizeof * 8) >= 1.sizeof);
     }
 
     /// Sorting specification for one column of a table (sizeof == 12 bytes)
@@ -4017,11 +4540,13 @@ extern (C) {
         bool WantDelete; /// Set to invalidate/delete the settings entry
     }
 
-    /// (Optional) Support for IME (Input Method Editor) via the platform_io.Platform_SetImeDataFn() function.
+    /// (Optional) Support for IME (Input Method Editor) via the platform_io.Platform_SetImeDataFn() function. Handler is called during EndFrame().
     struct ImGuiPlatformImeData {
-        bool WantVisible; /// A widget wants the IME to be visible
-        ImVec2 InputPos; /// Position of the input cursor
-        float InputLineHeight; /// Line height
+        bool WantVisible; /// A widget wants the IME to be visible.
+        bool WantTextInput; /// A widget wants text input, not necessarily IME to be visible. This is automatically set to the upcoming value of io.WantTextInput.
+        ImVec2 InputPos; /// Position of input cursor (for IME).
+        float InputLineHeight; /// Line height (for IME).
+        ImGuiID ViewportId; /// ID of platform window/viewport.
     }
 
     /// Draw command list
@@ -4049,7 +4574,7 @@ extern (C) {
         ImDrawCmdHeader _CmdHeader; /// [Internal] template of active commands. Fields should match those of CmdBuffer.back().
         ImDrawListSplitter _Splitter; /// [Internal] for channels api (note: prefer using your own persistent instance of ImDrawListSplitter!)
         ImVector!(ImVec4) _ClipRectStack; /// [Internal]
-        ImVector!(ImTextureID) _TextureIdStack; /// [Internal]
+        ImVector!(ImTextureRef) _TextureStack; /// [Internal]
         ImVector!(ImU8) _CallbacksDataBuf; /// [Internal]
         float _FringeScale; /// [Internal] anti-alias fringe is scaled by this value, this helps to keep things sharp while zooming at vertex buffer content
         const(char)* _OwnerName; /// Pointer to owner window's name for debugging
@@ -4127,6 +4652,7 @@ extern (C) @nogc nothrow {
     ImColor* ImColor_ImColor_U32(ImU32 rgba);
     void ImColor_SetHSV(ImColor* self, float h, float s, float v, float a = 1.0f);
     void ImColor_destroy(ImColor* self);
+    /// == (TexRef._TexData ? TexRef._TexData->TexID : TexRef._TexID
     ImTextureID ImDrawCmd_GetTexID(ImDrawCmd* self);
     /// Also ensure our padding fields are zeroed
     ImDrawCmd* ImDrawCmd_ImDrawCmd();
@@ -4166,9 +4692,9 @@ extern (C) @nogc nothrow {
     void ImDrawList_AddDrawCmd(ImDrawList* self);
     void ImDrawList_AddEllipse(ImDrawList* self, const ImVec2 center, const ImVec2 radius, ImU32 col, float rot = 0.0f, int num_segments = 0, float thickness = 1.0f);
     void ImDrawList_AddEllipseFilled(ImDrawList* self, const ImVec2 center, const ImVec2 radius, ImU32 col, float rot = 0.0f, int num_segments = 0);
-    void ImDrawList_AddImage(ImDrawList* self, ImTextureID user_texture_id, const ImVec2 p_min, const ImVec2 p_max, const ImVec2 uv_min = ImVec2(0,0), const ImVec2 uv_max = ImVec2(1,1), ImU32 col = 4294967295);
-    void ImDrawList_AddImageQuad(ImDrawList* self, ImTextureID user_texture_id, const ImVec2 p1, const ImVec2 p2, const ImVec2 p3, const ImVec2 p4, const ImVec2 uv1 = ImVec2(0,0), const ImVec2 uv2 = ImVec2(1,0), const ImVec2 uv3 = ImVec2(1,1), const ImVec2 uv4 = ImVec2(0,1), ImU32 col = 4294967295);
-    void ImDrawList_AddImageRounded(ImDrawList* self, ImTextureID user_texture_id, const ImVec2 p_min, const ImVec2 p_max, const ImVec2 uv_min, const ImVec2 uv_max, ImU32 col, float rounding, ImDrawFlags flags = ImDrawFlags.None);
+    void ImDrawList_AddImage(ImDrawList* self, ImTextureRef tex_ref, const ImVec2 p_min, const ImVec2 p_max, const ImVec2 uv_min = ImVec2(0,0), const ImVec2 uv_max = ImVec2(1,1), ImU32 col = 4294967295);
+    void ImDrawList_AddImageQuad(ImDrawList* self, ImTextureRef tex_ref, const ImVec2 p1, const ImVec2 p2, const ImVec2 p3, const ImVec2 p4, const ImVec2 uv1 = ImVec2(0,0), const ImVec2 uv2 = ImVec2(1,0), const ImVec2 uv3 = ImVec2(1,1), const ImVec2 uv4 = ImVec2(0,1), ImU32 col = 4294967295);
+    void ImDrawList_AddImageRounded(ImDrawList* self, ImTextureRef tex_ref, const ImVec2 p_min, const ImVec2 p_max, const ImVec2 uv_min, const ImVec2 uv_max, ImU32 col, float rounding, ImDrawFlags flags = ImDrawFlags.None);
     void ImDrawList_AddLine(ImDrawList* self, const ImVec2 p1, const ImVec2 p2, ImU32 col, float thickness = 1.0f);
     void ImDrawList_AddNgon(ImDrawList* self, const ImVec2 center, float radius, ImU32 col, int num_segments, float thickness = 1.0f);
     void ImDrawList_AddNgonFilled(ImDrawList* self, const ImVec2 center, float radius, ImU32 col, int num_segments);
@@ -4209,7 +4735,7 @@ extern (C) @nogc nothrow {
     void ImDrawList_PathRect(ImDrawList* self, const ImVec2 rect_min, const ImVec2 rect_max, float rounding = 0.0f, ImDrawFlags flags = ImDrawFlags.None);
     void ImDrawList_PathStroke(ImDrawList* self, ImU32 col, ImDrawFlags flags = ImDrawFlags.None, float thickness = 1.0f);
     void ImDrawList_PopClipRect(ImDrawList* self);
-    void ImDrawList_PopTextureID(ImDrawList* self);
+    void ImDrawList_PopTexture(ImDrawList* self);
     void ImDrawList_PrimQuadUV(ImDrawList* self, const ImVec2 a, const ImVec2 b, const ImVec2 c, const ImVec2 d, const ImVec2 uv_a, const ImVec2 uv_b, const ImVec2 uv_c, const ImVec2 uv_d, ImU32 col);
     /// Axis aligned rectangle (composed of two triangles)
     void ImDrawList_PrimRect(ImDrawList* self, const ImVec2 a, const ImVec2 b, ImU32 col);
@@ -4223,73 +4749,63 @@ extern (C) @nogc nothrow {
     /// Render-level scissoring. This is passed down to your render function but not used for CPU-side coarse clipping. Prefer using higher-level ImGui::PushClipRect() to affect logic (hit-testing and widget culling)
     void ImDrawList_PushClipRect(ImDrawList* self, const ImVec2 clip_rect_min, const ImVec2 clip_rect_max, bool intersect_with_current_clip_rect = false);
     void ImDrawList_PushClipRectFullScreen(ImDrawList* self);
-    void ImDrawList_PushTextureID(ImDrawList* self, ImTextureID texture_id);
+    void ImDrawList_PushTexture(ImDrawList* self, ImTextureRef tex_ref);
     int ImDrawList__CalcCircleAutoSegmentCount(ImDrawList* self, float radius);
     void ImDrawList__ClearFreeMemory(ImDrawList* self);
     void ImDrawList__OnChangedClipRect(ImDrawList* self);
-    void ImDrawList__OnChangedTextureID(ImDrawList* self);
+    void ImDrawList__OnChangedTexture(ImDrawList* self);
     void ImDrawList__OnChangedVtxOffset(ImDrawList* self);
     void ImDrawList__PathArcToFastEx(ImDrawList* self, const ImVec2 center, float radius, int a_min_sample, int a_max_sample, int a_step);
     void ImDrawList__PathArcToN(ImDrawList* self, const ImVec2 center, float radius, float a_min, float a_max, int num_segments);
     void ImDrawList__PopUnusedDrawCmd(ImDrawList* self);
     void ImDrawList__ResetForNewFrame(ImDrawList* self);
-    void ImDrawList__SetTextureID(ImDrawList* self, ImTextureID texture_id);
+    void ImDrawList__SetDrawListSharedData(ImDrawList* self, ImDrawListSharedData* data);
+    void ImDrawList__SetTexture(ImDrawList* self, ImTextureRef tex_ref);
     void ImDrawList__TryMergeDrawCmds(ImDrawList* self);
     void ImDrawList_destroy(ImDrawList* self);
-    ImFontAtlasCustomRect* ImFontAtlasCustomRect_ImFontAtlasCustomRect();
-    bool ImFontAtlasCustomRect_IsPacked(ImFontAtlasCustomRect* self);
-    void ImFontAtlasCustomRect_destroy(ImFontAtlasCustomRect* self);
-    int ImFontAtlas_AddCustomRectFontGlyph(ImFontAtlas* self, ImFont* font, ImWchar id, int width, int height, float advance_x, const ImVec2 offset = ImVec2(0,0));
-    int ImFontAtlas_AddCustomRectRegular(ImFontAtlas* self, int width, int height);
+    ImFontAtlasBuilder* ImFontAtlasBuilder_ImFontAtlasBuilder();
+    void ImFontAtlasBuilder_destroy(ImFontAtlasBuilder* self);
+    ImFontAtlasRect* ImFontAtlasRect_ImFontAtlasRect();
+    void ImFontAtlasRect_destroy(ImFontAtlasRect* self);
+    /// Register a rectangle. Return -1 (ImFontAtlasRectId_Invalid) on error.
+    ImFontAtlasRectId ImFontAtlas_AddCustomRect(ImFontAtlas* self, int width, int height, ImFontAtlasRect* out_r = null);
     ImFont* ImFontAtlas_AddFont(ImFontAtlas* self, const ImFontConfig* font_cfg);
     ImFont* ImFontAtlas_AddFontDefault(ImFontAtlas* self, const ImFontConfig* font_cfg = null);
-    ImFont* ImFontAtlas_AddFontFromFileTTF(ImFontAtlas* self, const(char)* filename, float size_pixels, const ImFontConfig* font_cfg = null, const(ImWchar)* glyph_ranges = null);
+    ImFont* ImFontAtlas_AddFontFromFileTTF(ImFontAtlas* self, const(char)* filename, float size_pixels = 0.0f, const ImFontConfig* font_cfg = null, const(ImWchar)* glyph_ranges = null);
     /// 'compressed_font_data_base85' still owned by caller. Compress with binary_to_compressed_c.cpp with -base85 parameter.
-    ImFont* ImFontAtlas_AddFontFromMemoryCompressedBase85TTF(ImFontAtlas* self, const(char)* compressed_font_data_base85, float size_pixels, const ImFontConfig* font_cfg = null, const(ImWchar)* glyph_ranges = null);
+    ImFont* ImFontAtlas_AddFontFromMemoryCompressedBase85TTF(ImFontAtlas* self, const(char)* compressed_font_data_base85, float size_pixels = 0.0f, const ImFontConfig* font_cfg = null, const(ImWchar)* glyph_ranges = null);
     /// 'compressed_font_data' still owned by caller. Compress with binary_to_compressed_c.cpp.
-    ImFont* ImFontAtlas_AddFontFromMemoryCompressedTTF(ImFontAtlas* self, const void* compressed_font_data, int compressed_font_data_size, float size_pixels, const ImFontConfig* font_cfg = null, const(ImWchar)* glyph_ranges = null);
+    ImFont* ImFontAtlas_AddFontFromMemoryCompressedTTF(ImFontAtlas* self, const void* compressed_font_data, int compressed_font_data_size, float size_pixels = 0.0f, const ImFontConfig* font_cfg = null, const(ImWchar)* glyph_ranges = null);
     /// Note: Transfer ownership of 'ttf_data' to ImFontAtlas! Will be deleted after destruction of the atlas. Set font_cfg->FontDataOwnedByAtlas=false to keep ownership of your data and it won't be freed.
-    ImFont* ImFontAtlas_AddFontFromMemoryTTF(ImFontAtlas* self, void* font_data, int font_data_size, float size_pixels, const ImFontConfig* font_cfg = null, const(ImWchar)* glyph_ranges = null);
-    /// Build pixels data. This is called automatically for you by the GetTexData*** functions.
-    bool ImFontAtlas_Build(ImFontAtlas* self);
-    void ImFontAtlas_CalcCustomRectUV(ImFontAtlas* self, const ImFontAtlasCustomRect* rect, ImVec2* out_uv_min, ImVec2* out_uv_max);
-    /// Clear all input and output.
+    ImFont* ImFontAtlas_AddFontFromMemoryTTF(ImFontAtlas* self, void* font_data, int font_data_size, float size_pixels = 0.0f, const ImFontConfig* font_cfg = null, const(ImWchar)* glyph_ranges = null);
+    /// Clear everything (input fonts, output glyphs/textures)
     void ImFontAtlas_Clear(ImFontAtlas* self);
-    /// Clear input+output font data (same as ClearInputData() + glyphs storage, UV coordinates).
+    /// [OBSOLETE] Clear input+output font data (same as ClearInputData() + glyphs storage, UV coordinates).
     void ImFontAtlas_ClearFonts(ImFontAtlas* self);
-    /// Clear input data (all ImFontConfig structures including sizes, TTF data, glyph ranges, etc.) = all the data used to build the texture and fonts.
+    /// [OBSOLETE] Clear input data (all ImFontConfig structures including sizes, TTF data, glyph ranges, etc.) = all the data used to build the texture and fonts.
     void ImFontAtlas_ClearInputData(ImFontAtlas* self);
-    /// Clear output texture data (CPU side). Saves RAM once the texture has been copied to graphics memory.
+    /// [OBSOLETE] Clear CPU-side copy of the texture data. Saves RAM once the texture has been copied to graphics memory.
     void ImFontAtlas_ClearTexData(ImFontAtlas* self);
-    ImFontAtlasCustomRect* ImFontAtlas_GetCustomRectByIndex(ImFontAtlas* self, int index);
-    /// Default + Half-Width + Japanese Hiragana/Katakana + full set of about 21000 CJK Unified Ideographs
-    const(ImWchar)* ImFontAtlas_GetGlyphRangesChineseFull(ImFontAtlas* self);
-    /// Default + Half-Width + Japanese Hiragana/Katakana + set of 2500 CJK Unified Ideographs for common simplified Chinese
-    const(ImWchar)* ImFontAtlas_GetGlyphRangesChineseSimplifiedCommon(ImFontAtlas* self);
-    /// Default + about 400 Cyrillic characters
-    const(ImWchar)* ImFontAtlas_GetGlyphRangesCyrillic(ImFontAtlas* self);
+    /// Compact cached glyphs and texture.
+    void ImFontAtlas_CompactCache(ImFontAtlas* self);
+    /// Get rectangle coordinates for current texture. Valid immediately, never store this (read above)!
+    bool ImFontAtlas_GetCustomRect(ImFontAtlas* self, ImFontAtlasRectId id, ImFontAtlasRect* out_r);
     /// Basic Latin, Extended Latin
     const(ImWchar)* ImFontAtlas_GetGlyphRangesDefault(ImFontAtlas* self);
-    /// Default + Greek and Coptic
-    const(ImWchar)* ImFontAtlas_GetGlyphRangesGreek(ImFontAtlas* self);
-    /// Default + Hiragana, Katakana, Half-Width, Selection of 2999 Ideographs
-    const(ImWchar)* ImFontAtlas_GetGlyphRangesJapanese(ImFontAtlas* self);
-    /// Default + Korean characters
-    const(ImWchar)* ImFontAtlas_GetGlyphRangesKorean(ImFontAtlas* self);
-    /// Default + Thai characters
-    const(ImWchar)* ImFontAtlas_GetGlyphRangesThai(ImFontAtlas* self);
-    /// Default + Vietnamese characters
-    const(ImWchar)* ImFontAtlas_GetGlyphRangesVietnamese(ImFontAtlas* self);
-    bool ImFontAtlas_GetMouseCursorTexData(ImFontAtlas* self, ImGuiMouseCursor cursor, ImVec2* out_offset, ImVec2* out_size, ImVec2[2]*/*[2]*/ out_uv_border, ImVec2[2]*/*[2]*/ out_uv_fill);
-    /// 1 byte per-pixel
-    void ImFontAtlas_GetTexDataAsAlpha8(ImFontAtlas* self, char** out_pixels, int* out_width, int* out_height, int* out_bytes_per_pixel = null);
-    /// 4 bytes-per-pixel
-    void ImFontAtlas_GetTexDataAsRGBA32(ImFontAtlas* self, char** out_pixels, int* out_width, int* out_height, int* out_bytes_per_pixel = null);
     ImFontAtlas* ImFontAtlas_ImFontAtlas();
-    /// Bit ambiguous: used to detect when user didn't build texture but effectively we should check TexID != 0 except that would be backend dependent...
-    bool ImFontAtlas_IsBuilt(ImFontAtlas* self);
-    void ImFontAtlas_SetTexID(ImFontAtlas* self, ImTextureID id);
+    /// Unregister a rectangle. Existing pixels will stay in texture until resized / garbage collected.
+    void ImFontAtlas_RemoveCustomRect(ImFontAtlas* self, ImFontAtlasRectId id);
+    void ImFontAtlas_RemoveFont(ImFontAtlas* self, ImFont* font);
     void ImFontAtlas_destroy(ImFontAtlas* self);
+    void ImFontBaked_ClearOutputData(ImFontBaked* self);
+    /// Return U+FFFD glyph if requested glyph doesn't exists.
+    ImFontGlyph* ImFontBaked_FindGlyph(ImFontBaked* self, ImWchar c);
+    /// Return NULL if glyph doesn't exist
+    ImFontGlyph* ImFontBaked_FindGlyphNoFallback(ImFontBaked* self, ImWchar c);
+    float ImFontBaked_GetCharAdvance(ImFontBaked* self, ImWchar c);
+    ImFontBaked* ImFontBaked_ImFontBaked();
+    bool ImFontBaked_IsGlyphLoaded(ImFontBaked* self, ImWchar c);
+    void ImFontBaked_destroy(ImFontBaked* self);
     ImFontConfig* ImFontConfig_ImFontConfig();
     void ImFontConfig_destroy(ImFontConfig* self);
     /// Add character
@@ -4307,25 +4823,26 @@ extern (C) @nogc nothrow {
     /// Set bit n in the array
     void ImFontGlyphRangesBuilder_SetBit(ImFontGlyphRangesBuilder* self, size_t n);
     void ImFontGlyphRangesBuilder_destroy(ImFontGlyphRangesBuilder* self);
-    void ImFont_AddGlyph(ImFont* self, const ImFontConfig* src_cfg, ImWchar c, float x0, float y0, float x1, float y1, float u0, float v0, float u1, float v1, float advance_x);
-    /// Makes 'dst' character/glyph points to 'src' character/glyph. Currently needs to be called AFTER fonts have been built.
-    void ImFont_AddRemapChar(ImFont* self, ImWchar dst, ImWchar src, bool overwrite_dst = true);
-    void ImFont_BuildLookupTable(ImFont* self);
+    ImFontGlyph* ImFontGlyph_ImFontGlyph();
+    void ImFontGlyph_destroy(ImFontGlyph* self);
+    ImFontLoader* ImFontLoader_ImFontLoader();
+    void ImFontLoader_destroy(ImFontLoader* self);
+    /// Makes 'from_codepoint' character points to 'to_codepoint' glyph.
+    void ImFont_AddRemapChar(ImFont* self, ImWchar from_codepoint, ImWchar to_codepoint);
     /// utf8
     void ImFont_CalcTextSizeA(ImVec2* pOut, ImFont* self, float size, float max_width, float wrap_width, const(char)* text_begin, const(char)* text_end = null, const char** remaining = null);
-    const(char)* ImFont_CalcWordWrapPositionA(ImFont* self, float scale, const(char)* text, const(char)* text_end, float wrap_width);
+    const(char)* ImFont_CalcWordWrapPosition(ImFont* self, float size, const(char)* text, const(char)* text_end, float wrap_width);
     void ImFont_ClearOutputData(ImFont* self);
-    const(ImFontGlyph)* ImFont_FindGlyph(ImFont* self, ImWchar c);
-    const(ImFontGlyph)* ImFont_FindGlyphNoFallback(ImFont* self, ImWchar c);
-    float ImFont_GetCharAdvance(ImFont* self, ImWchar c);
+    /// Fill ImFontConfig::Name.
     const(char)* ImFont_GetDebugName(ImFont* self);
-    void ImFont_GrowIndex(ImFont* self, int new_size);
+    /// Get or create baked data for given size
+    ImFontBaked* ImFont_GetFontBaked(ImFont* self, float font_size, float density = -1.0f);
     ImFont* ImFont_ImFont();
+    bool ImFont_IsGlyphInFont(ImFont* self, ImWchar c);
     bool ImFont_IsGlyphRangeUnused(ImFont* self, uint c_begin, uint c_last);
     bool ImFont_IsLoaded(ImFont* self);
-    void ImFont_RenderChar(ImFont* self, ImDrawList* draw_list, float size, const ImVec2 pos, ImU32 col, ImWchar c);
+    void ImFont_RenderChar(ImFont* self, ImDrawList* draw_list, float size, const ImVec2 pos, ImU32 col, ImWchar c, const(ImVec4)* cpu_fine_clip = null);
     void ImFont_RenderText(ImFont* self, ImDrawList* draw_list, float size, const ImVec2 pos, ImU32 col, const ImVec4 clip_rect, const(char)* text_begin, const(char)* text_end, float wrap_width = 0.0f, bool cpu_fine_clip = false);
-    void ImFont_SetGlyphVisible(ImFont* self, ImWchar c, bool visible);
     void ImFont_destroy(ImFont* self);
     ImGuiBoxSelectState* ImGuiBoxSelectState_ImGuiBoxSelectState();
     void ImGuiBoxSelectState_destroy(ImGuiBoxSelectState* self);
@@ -4335,7 +4852,6 @@ extern (C) @nogc nothrow {
     void ImGuiContextHook_destroy(ImGuiContextHook* self);
     ImGuiContext* ImGuiContext_ImGuiContext(ImFontAtlas* shared_font_atlas);
     void ImGuiContext_destroy(ImGuiContext* self);
-    void* ImGuiDataVarInfo_GetVarPtr(ImGuiDataVarInfo* self, void* parent);
     ImGuiDebugAllocInfo* ImGuiDebugAllocInfo_ImGuiDebugAllocInfo();
     void ImGuiDebugAllocInfo_destroy(ImGuiDebugAllocInfo* self);
     ImGuiDockContext* ImGuiDockContext_ImGuiDockContext();
@@ -4548,7 +5064,9 @@ extern (C) @nogc nothrow {
     ImGuiStyleMod* ImGuiStyleMod_ImGuiStyleMod_Float(ImGuiStyleVar idx, float v);
     ImGuiStyleMod* ImGuiStyleMod_ImGuiStyleMod_Vec2(ImGuiStyleVar idx, ImVec2 v);
     void ImGuiStyleMod_destroy(ImGuiStyleMod* self);
+    void* ImGuiStyleVarInfo_GetVarPtr(ImGuiStyleVarInfo* self, void* parent);
     ImGuiStyle* ImGuiStyle_ImGuiStyle();
+    /// Scale all spacing/padding/thickness values. Do not scale fonts.
     void ImGuiStyle_ScaleAllSizes(ImGuiStyle* self, float scale_factor);
     void ImGuiStyle_destroy(ImGuiStyle* self);
     ImGuiTabBar* ImGuiTabBar_ImGuiTabBar();
@@ -4584,6 +5102,8 @@ extern (C) @nogc nothrow {
     /// Buf is zero-terminated, so end() will point on the zero-terminator
     const(char)* ImGuiTextBuffer_end(ImGuiTextBuffer* self);
     void ImGuiTextBuffer_reserve(ImGuiTextBuffer* self, int capacity);
+    /// Similar to resize(0) on ImVector: empty string but don't free buffer.
+    void ImGuiTextBuffer_resize(ImGuiTextBuffer* self, int size);
     int ImGuiTextBuffer_size(ImGuiTextBuffer* self);
     void ImGuiTextFilter_Build(ImGuiTextFilter* self);
     void ImGuiTextFilter_Clear(ImGuiTextFilter* self);
@@ -4626,7 +5146,6 @@ extern (C) @nogc nothrow {
     char* ImGuiWindowSettings_GetName(ImGuiWindowSettings* self);
     ImGuiWindowSettings* ImGuiWindowSettings_ImGuiWindowSettings();
     void ImGuiWindowSettings_destroy(ImGuiWindowSettings* self);
-    float ImGuiWindow_CalcFontSize(ImGuiWindow* self);
     ImGuiID ImGuiWindow_GetID_Str(ImGuiWindow* self, const(char)* str, const(char)* str_end = null);
     ImGuiID ImGuiWindow_GetID_Ptr(ImGuiWindow* self, const void* ptr);
     ImGuiID ImGuiWindow_GetID_Int(ImGuiWindow* self, int n);
@@ -4673,12 +5192,34 @@ extern (C) @nogc nothrow {
     void ImRect_TranslateX(ImRect* self, float dx);
     void ImRect_TranslateY(ImRect* self, float dy);
     void ImRect_destroy(ImRect* self);
+    void ImTextureData_Create(ImTextureData* self, ImTextureFormat format, int w, int h);
+    void ImTextureData_DestroyPixels(ImTextureData* self);
+    int ImTextureData_GetPitch(ImTextureData* self);
+    char* ImTextureData_GetPixels(ImTextureData* self);
+    char* ImTextureData_GetPixelsAt(ImTextureData* self, int x, int y);
+    int ImTextureData_GetSizeInBytes(ImTextureData* self);
+    ImTextureID ImTextureData_GetTexID(ImTextureData* self);
+    void ImTextureData_GetTexRef(ImTextureRef* pOut, ImTextureData* self);
+    ImTextureData* ImTextureData_ImTextureData();
+    /// Call after honoring a request. Never modify Status directly!
+    void ImTextureData_SetStatus(ImTextureData* self, ImTextureStatus status);
+    /// Call after creating or destroying the texture. Never modify TexID directly!
+    void ImTextureData_SetTexID(ImTextureData* self, ImTextureID tex_id);
+    void ImTextureData_destroy(ImTextureData* self);
+    /// == (_TexData ? _TexData->TexID : _TexID) /// Implemented below in the file.
+    ImTextureID ImTextureRef_GetTexID(ImTextureRef* self);
+    ImTextureRef* ImTextureRef_ImTextureRef_Nil();
+    ImTextureRef* ImTextureRef_ImTextureRef_TextureID(ImTextureID tex_id);
+    void ImTextureRef_destroy(ImTextureRef* self);
     ImVec1* ImVec1_ImVec1_Nil();
     ImVec1* ImVec1_ImVec1_Float(float _x);
     void ImVec1_destroy(ImVec1* self);
     ImVec2* ImVec2_ImVec2_Nil();
     ImVec2* ImVec2_ImVec2_Float(float _x, float _y);
     void ImVec2_destroy(ImVec2* self);
+    ImVec2i* ImVec2i_ImVec2i_Nil();
+    ImVec2i* ImVec2i_ImVec2i_Int(int _x, int _y);
+    void ImVec2i_destroy(ImVec2i* self);
     ImVec2ih* ImVec2ih_ImVec2ih_Nil();
     ImVec2ih* ImVec2ih_ImVec2ih_short(short _x, short _y);
     ImVec2ih* ImVec2ih_ImVec2ih_Vec2(const ImVec2 rhs);
@@ -4742,6 +5283,7 @@ extern (C) @nogc nothrow {
     /// open+begin popup when clicked on current window.
     bool igBeginPopupContextWindow(const(char)* str_id = null, ImGuiPopupFlags popup_flags = ImGuiPopupFlags.MouseButtonDefault_);
     bool igBeginPopupEx(ImGuiID id, ImGuiWindowFlags extra_window_flags);
+    bool igBeginPopupMenuEx(ImGuiID id, const(char)* label, ImGuiWindowFlags extra_window_flags);
     /// return true if the modal is open, and you can start outputting to it.
     bool igBeginPopupModal(const(char)* name, bool* p_open = null, ImGuiWindowFlags flags = ImGuiWindowFlags.None);
     /// create and append into a TabBar
@@ -4852,6 +5394,7 @@ extern (C) @nogc nothrow {
     void igDebugNodeDrawList(ImGuiWindow* window, ImGuiViewportP* viewport, const ImDrawList* draw_list, const(char)* label);
     void igDebugNodeFont(ImFont* font);
     void igDebugNodeFontGlyph(ImFont* font, const(ImFontGlyph)* glyph);
+    void igDebugNodeFontGlyphesForSrcMask(ImFont* font, ImFontBaked* baked, int src_mask);
     void igDebugNodeInputTextState(ImGuiInputTextState* state);
     void igDebugNodeMultiSelectState(ImGuiMultiSelectState* state);
     void igDebugNodePlatformMonitor(ImGuiPlatformMonitor* monitor, const(char)* label, int idx);
@@ -4859,6 +5402,8 @@ extern (C) @nogc nothrow {
     void igDebugNodeTabBar(ImGuiTabBar* tab_bar, const(char)* label);
     void igDebugNodeTable(ImGuiTable* table);
     void igDebugNodeTableSettings(ImGuiTableSettings* settings);
+    /// ID used to facilitate persisting the "current" texture.
+    void igDebugNodeTexture(ImTextureData* tex, int int_id, const ImFontAtlasRect* highlight_rect = null);
     void igDebugNodeTypingSelectState(ImGuiTypingSelectState* state);
     void igDebugNodeViewport(ImGuiViewportP* viewport);
     void igDebugNodeWindow(ImGuiWindow* window, const(char)* label);
@@ -5049,14 +5594,17 @@ extern (C) @nogc nothrow {
     ImFont* igGetDefaultFont();
     /// peek directly into the current payload from anywhere. returns NULL when drag and drop is finished or inactive. use ImGuiPayload::IsDataType() to test for the payload type.
     const(ImGuiPayload)* igGetDragDropPayload();
-    /// valid after Render() and until the next call to NewFrame(). this is what you have to render.
+    /// valid after Render() and until the next call to NewFrame(). Call ImGui_ImplXXXX_RenderDrawData() function in your Renderer Backend to render.
     ImDrawData* igGetDrawData();
     /// you may use this when creating your own ImDrawList instances.
     ImDrawListSharedData* igGetDrawListSharedData();
     ImGuiID igGetFocusID();
     /// get current font
     ImFont* igGetFont();
-    /// get current font size (= height in pixels) of current font with current scale applied
+    /// get current font bound at current size /// == GetFont()->GetFontBaked(GetFontSize())
+    ImFontBaked* igGetFontBaked();
+    float igGetFontRasterizerDensity();
+    /// get current font size (= height in pixels) of current font with external scale factors applied. Use ImGui::GetStyle().FontSizeBase to get value before external scale factors.
     float igGetFontSize();
     /// get UV coordinate for a white pixel, useful to draw custom shapes via the ImDrawList API
     void igGetFontTexUvWhitePixel(ImVec2* pOut);
@@ -5078,8 +5626,8 @@ extern (C) @nogc nothrow {
     ImGuiID igGetIDWithSeed_Str(const(char)* str_id_begin, const(char)* str_id_end, ImGuiID seed);
     ImGuiID igGetIDWithSeed_Int(int n, ImGuiID seed);
     /// access the ImGuiIO structure (mouse/keyboard/gamepad inputs, time, various configuration options/flags)
-    ImGuiIO* igGetIO();
-    ImGuiIO* igGetIOEx(ImGuiContext* ctx);
+    ImGuiIO* igGetIO_Nil();
+    ImGuiIO* igGetIO_ContextPtr(ImGuiContext* ctx);
     /// Get input text state if active
     ImGuiInputTextState* igGetInputTextState(ImGuiID id);
     ImGuiItemFlags igGetItemFlags();
@@ -5096,7 +5644,7 @@ extern (C) @nogc nothrow {
     ImGuiKeyData* igGetKeyData_ContextPtr(ImGuiContext* ctx, ImGuiKey key);
     ImGuiKeyData* igGetKeyData_Key(ImGuiKey key);
     void igGetKeyMagnitude2d(ImVec2* pOut, ImGuiKey key_left, ImGuiKey key_right, ImGuiKey key_up, ImGuiKey key_down);
-    /// [DEBUG] returns English name of the key. Those names a provided for debugging purpose and are not meant to be saved persistently not compared.
+    /// [DEBUG] returns English name of the key. Those names are provided for debugging purpose and are not meant to be saved persistently nor compared.
     const(char)* igGetKeyName(ImGuiKey key);
     ImGuiID igGetKeyOwner(ImGuiKey key);
     ImGuiKeyOwnerData* igGetKeyOwnerData(ImGuiContext* ctx, ImGuiKey key);
@@ -5117,9 +5665,10 @@ extern (C) @nogc nothrow {
     ImGuiMultiSelectState* igGetMultiSelectState(ImGuiID id);
     float igGetNavTweakPressedAmount(ImGuiAxis axis);
     /// access the ImGuiPlatformIO structure (mostly hooks/functions to connect to platform/renderer and OS Clipboard, IME etc.)
-    ImGuiPlatformIO* igGetPlatformIO();
-    ImGuiPlatformIO* igGetPlatformIOEx(ImGuiContext* ctx);
+    ImGuiPlatformIO* igGetPlatformIO_Nil();
+    ImGuiPlatformIO* igGetPlatformIO_ContextPtr(ImGuiContext* ctx);
     void igGetPopupAllowedExtentRect(ImRect* pOut, ImGuiWindow* window);
+    float igGetRoundedFontSize(float size);
     /// get maximum scrolling amount ~~ ContentSize.x - WindowSize.x - DecorationsSize.x
     float igGetScrollMaxX();
     /// get maximum scrolling amount ~~ ContentSize.y - WindowSize.y - DecorationsSize.y
@@ -5136,7 +5685,7 @@ extern (C) @nogc nothrow {
     const(char)* igGetStyleColorName(ImGuiCol idx);
     /// retrieve style color as stored in ImGuiStyle structure. use to feed back into PushStyleColor(), otherwise use GetColorU32() to get style color with style alpha baked in.
     const(ImVec4)* igGetStyleColorVec4(ImGuiCol idx);
-    const(ImGuiDataVarInfo)* igGetStyleVarInfo(ImGuiStyleVar idx);
+    const(ImGuiStyleVarInfo)* igGetStyleVarInfo(ImGuiStyleVar idx);
     /// ~ FontSize
     float igGetTextLineHeight();
     /// ~ FontSize + style.ItemSpacing.y (distance in pixels between 2 consecutive lines of text)
@@ -5194,6 +5743,7 @@ extern (C) @nogc nothrow {
     bool igImCharIsBlankW(uint c);
     bool igImCharIsXdigitA(char c);
     void igImClamp(ImVec2* pOut, const ImVec2 v, const ImVec2 mn, const ImVec2 mx);
+    uint igImCountSetBits(uint v);
     float igImDot(const ImVec2 a, const ImVec2 b);
     float igImExponentialMovingAverage(float avg, float sample, int n);
     bool igImFileClose(ImFileHandle file);
@@ -5205,17 +5755,62 @@ extern (C) @nogc nothrow {
     /// Decent replacement for floorf()
     float igImFloor_Float(float f);
     void igImFloor_Vec2(ImVec2* pOut, const ImVec2 v);
-    void igImFontAtlasBuildFinish(ImFontAtlas* atlas);
-    void igImFontAtlasBuildGetOversampleFactors(const ImFontConfig* cfg, int* out_oversample_h, int* out_oversample_v);
+    void igImFontAtlasAddDrawListSharedData(ImFontAtlas* atlas, ImDrawListSharedData* data);
+    ImFontBaked* igImFontAtlasBakedAdd(ImFontAtlas* atlas, ImFont* font, float font_size, float font_rasterizer_density, ImGuiID baked_id);
+    ImFontGlyph* igImFontAtlasBakedAddFontGlyph(ImFontAtlas* atlas, ImFontBaked* baked, ImFontConfig* src, const(ImFontGlyph)* in_glyph);
+    void igImFontAtlasBakedDiscard(ImFontAtlas* atlas, ImFont* font, ImFontBaked* baked);
+    void igImFontAtlasBakedDiscardFontGlyph(ImFontAtlas* atlas, ImFont* font, ImFontBaked* baked, ImFontGlyph* glyph);
+    ImFontBaked* igImFontAtlasBakedGetClosestMatch(ImFontAtlas* atlas, ImFont* font, float font_size, float font_rasterizer_density);
+    ImGuiID igImFontAtlasBakedGetId(ImGuiID font_id, float baked_size, float rasterizer_density);
+    ImFontBaked* igImFontAtlasBakedGetOrAdd(ImFontAtlas* atlas, ImFont* font, float font_size, float font_rasterizer_density);
+    void igImFontAtlasBakedSetFontGlyphBitmap(ImFontAtlas* atlas, ImFontBaked* baked, ImFontConfig* src, ImFontGlyph* glyph, ImTextureRect* r, const(char)* src_pixels, ImTextureFormat src_fmt, int src_pitch);
+    /// Clear output and custom rects
+    void igImFontAtlasBuildClear(ImFontAtlas* atlas);
+    void igImFontAtlasBuildDestroy(ImFontAtlas* atlas);
+    void igImFontAtlasBuildDiscardBakes(ImFontAtlas* atlas, int unused_frames);
+    void igImFontAtlasBuildGetOversampleFactors(ImFontConfig* src, ImFontBaked* baked, int* out_oversample_h, int* out_oversample_v);
     void igImFontAtlasBuildInit(ImFontAtlas* atlas);
-    void igImFontAtlasBuildMultiplyCalcLookupTable(char[256]*/*[256]*/ out_table, float in_multiply_factor);
-    void igImFontAtlasBuildMultiplyRectAlpha8(const char[256]*/*[256]*/ table, char* pixels, int x, int y, int w, int h, int stride);
-    void igImFontAtlasBuildPackCustomRects(ImFontAtlas* atlas, void* stbrp_context_opaque);
-    void igImFontAtlasBuildRender32bppRectFromString(ImFontAtlas* atlas, int x, int y, int w, int h, const(char)* in_str, char in_marker_char, uint in_marker_pixel_value);
-    void igImFontAtlasBuildRender8bppRectFromString(ImFontAtlas* atlas, int x, int y, int w, int h, const(char)* in_str, char in_marker_char, char in_marker_pixel_value);
-    void igImFontAtlasBuildSetupFont(ImFontAtlas* atlas, ImFont* font, ImFontConfig* font_config, float ascent, float descent);
-    const(ImFontBuilderIO)* igImFontAtlasGetBuilderForStbTruetype();
-    void igImFontAtlasUpdateConfigDataPointers(ImFontAtlas* atlas);
+    /// Legacy
+    void igImFontAtlasBuildLegacyPreloadAllGlyphRanges(ImFontAtlas* atlas);
+    void igImFontAtlasBuildMain(ImFontAtlas* atlas);
+    void igImFontAtlasBuildRenderBitmapFromString(ImFontAtlas* atlas, int x, int y, int w, int h, const(char)* in_str, char in_marker_char);
+    void igImFontAtlasBuildSetupFontLoader(ImFontAtlas* atlas, const(ImFontLoader)* font_loader);
+    void igImFontAtlasBuildSetupFontSpecialGlyphs(ImFontAtlas* atlas, ImFont* font, ImFontConfig* src);
+    void igImFontAtlasBuildUpdatePointers(ImFontAtlas* atlas);
+    void igImFontAtlasDebugLogTextureRequests(ImFontAtlas* atlas);
+    void igImFontAtlasFontDestroyOutput(ImFontAtlas* atlas, ImFont* font);
+    void igImFontAtlasFontDestroySourceData(ImFontAtlas* atlas, ImFontConfig* src);
+    void igImFontAtlasFontDiscardBakes(ImFontAtlas* atlas, ImFont* font, int unused_frames);
+    /// Using FontDestroyOutput/FontInitOutput sequence useful notably if font loader params have changed
+    bool igImFontAtlasFontInitOutput(ImFontAtlas* atlas, ImFont* font);
+    void igImFontAtlasFontSourceAddToFont(ImFontAtlas* atlas, ImFont* font, ImFontConfig* src);
+    bool igImFontAtlasFontSourceInit(ImFontAtlas* atlas, ImFontConfig* src);
+    const(ImFontLoader)* igImFontAtlasGetFontLoaderForStbTruetype();
+    bool igImFontAtlasGetMouseCursorTexData(ImFontAtlas* atlas, ImGuiMouseCursor cursor_type, ImVec2* out_offset, ImVec2* out_size, ImVec2[2]*/*[2]*/ out_uv_border, ImVec2[2]*/*[2]*/ out_uv_fill);
+    ImFontAtlasRectId igImFontAtlasPackAddRect(ImFontAtlas* atlas, int w, int h, ImFontAtlasRectEntry* overwrite_entry = null);
+    void igImFontAtlasPackDiscardRect(ImFontAtlas* atlas, ImFontAtlasRectId id);
+    ImTextureRect* igImFontAtlasPackGetRect(ImFontAtlas* atlas, ImFontAtlasRectId id);
+    ImTextureRect* igImFontAtlasPackGetRectSafe(ImFontAtlas* atlas, ImFontAtlasRectId id);
+    void igImFontAtlasPackInit(ImFontAtlas* atlas);
+    int igImFontAtlasRectId_GetGeneration(ImFontAtlasRectId id);
+    int igImFontAtlasRectId_GetIndex(ImFontAtlasRectId id);
+    ImFontAtlasRectId igImFontAtlasRectId_Make(int index_idx, int gen_idx);
+    void igImFontAtlasRemoveDrawListSharedData(ImFontAtlas* atlas, ImDrawListSharedData* data);
+    ImTextureData* igImFontAtlasTextureAdd(ImFontAtlas* atlas, int w, int h);
+    void igImFontAtlasTextureBlockConvert(const(char)* src_pixels, ImTextureFormat src_fmt, int src_pitch, char* dst_pixels, ImTextureFormat dst_fmt, int dst_pitch, int w, int h);
+    void igImFontAtlasTextureBlockCopy(ImTextureData* src_tex, int src_x, int src_y, ImTextureData* dst_tex, int dst_x, int dst_y, int w, int h);
+    void igImFontAtlasTextureBlockFill(ImTextureData* dst_tex, int dst_x, int dst_y, int w, int h, ImU32 col);
+    void igImFontAtlasTextureBlockPostProcess(ImFontAtlasPostProcessData* data);
+    void igImFontAtlasTextureBlockPostProcessMultiply(ImFontAtlasPostProcessData* data, float multiply_factor);
+    void igImFontAtlasTextureBlockQueueUpload(ImFontAtlas* atlas, ImTextureData* tex, int x, int y, int w, int h);
+    void igImFontAtlasTextureCompact(ImFontAtlas* atlas);
+    void igImFontAtlasTextureGetSizeEstimate(ImVec2i* pOut, ImFontAtlas* atlas);
+    void igImFontAtlasTextureGrow(ImFontAtlas* atlas, int old_w = -1, int old_h = -1);
+    void igImFontAtlasTextureMakeSpace(ImFontAtlas* atlas);
+    void igImFontAtlasTextureRepack(ImFontAtlas* atlas, int w, int h);
+    void igImFontAtlasUpdateDrawListsSharedData(ImFontAtlas* atlas);
+    void igImFontAtlasUpdateDrawListsTextures(ImFontAtlas* atlas, ImTextureRef old_tex, ImTextureRef new_tex);
+    void igImFontAtlasUpdateNewFrame(ImFontAtlas* atlas, int frame_count, bool renderer_has_textures);
     int igImFormatString(char* buf, size_t buf_size, const(char)* fmt, ...);
     void igImFormatStringToTempBuffer(const char** out_buf, const char** out_buf_end, const(char)* fmt, ...);
     void igImFormatStringToTempBufferV(const char** out_buf, const char** out_buf_end, const(char)* fmt, va_list args);
@@ -5239,6 +5834,8 @@ extern (C) @nogc nothrow {
     double igImLog_double(double x);
     ImGuiStoragePair* igImLowerBound(ImGuiStoragePair* in_begin, ImGuiStoragePair* in_end, ImGuiID key);
     void igImMax(ImVec2* pOut, const ImVec2 lhs, const ImVec2 rhs);
+    /// Duplicate a chunk of memory.
+    void* igImMemdup(const void* src, size_t size);
     void igImMin(ImVec2* pOut, const ImVec2 lhs, const ImVec2 rhs);
     int igImModPositive(int a, int b);
     void igImMul(ImVec2* pOut, const ImVec2 lhs, const ImVec2 rhs);
@@ -5253,6 +5850,7 @@ extern (C) @nogc nothrow {
     double igImPow_double(double x, double y);
     void igImQsort(void* base, size_t count, size_t size_of_element, int function(const(void*), const(void*)) compare_func);
     void igImRotate(ImVec2* pOut, const ImVec2 v, float cos_a, float sin_a);
+    float igImRound64(float f);
     float igImRsqrt_Float(float x);
     double igImRsqrt_double(double x);
     float igImSaturate(float f);
@@ -5301,6 +5899,9 @@ extern (C) @nogc nothrow {
     int igImTextStrFromUtf8(ImWchar* out_buf, int out_buf_size, const(char)* in_text, const(char)* in_text_end, const char** in_remaining = null);
     /// return output UTF-8 bytes count
     int igImTextStrToUtf8(char* out_buf, int out_buf_size, const(ImWchar)* in_text, const(ImWchar)* in_text_end);
+    int igImTextureDataGetFormatBytesPerPixel(ImTextureFormat format);
+    const(char)* igImTextureDataGetFormatName(ImTextureFormat format);
+    const(char)* igImTextureDataGetStatusName(ImTextureStatus status);
     char igImToUpper(char c);
     float igImTriangleArea(const ImVec2 a, const ImVec2 b, const ImVec2 c);
     void igImTriangleBarycentricCoords(const ImVec2 a, const ImVec2 b, const ImVec2 c, const ImVec2 p, float* out_u, float* out_v, float* out_w);
@@ -5309,10 +5910,12 @@ extern (C) @nogc nothrow {
     bool igImTriangleIsClockwise(const ImVec2 a, const ImVec2 b, const ImVec2 c);
     float igImTrunc_Float(float f);
     void igImTrunc_Vec2(ImVec2* pOut, const ImVec2 v);
+    float igImTrunc64(float f);
     int igImUpperPowerOfTwo(int v);
-    void igImage(ImTextureID user_texture_id, const ImVec2 image_size, const ImVec2 uv0 = ImVec2(0,0), const ImVec2 uv1 = ImVec2(1,1), const ImVec4 tint_col = ImVec4(1,1,1,1), const ImVec4 border_col = ImVec4(0,0,0,0));
-    bool igImageButton(const(char)* str_id, ImTextureID user_texture_id, const ImVec2 image_size, const ImVec2 uv0 = ImVec2(0,0), const ImVec2 uv1 = ImVec2(1,1), const ImVec4 bg_col = ImVec4(0,0,0,0), const ImVec4 tint_col = ImVec4(1,1,1,1));
-    bool igImageButtonEx(ImGuiID id, ImTextureID user_texture_id, const ImVec2 image_size, const ImVec2 uv0, const ImVec2 uv1, const ImVec4 bg_col, const ImVec4 tint_col, ImGuiButtonFlags flags = ImGuiButtonFlags.None);
+    void igImage(ImTextureRef tex_ref, const ImVec2 image_size, const ImVec2 uv0 = ImVec2(0,0), const ImVec2 uv1 = ImVec2(1,1));
+    bool igImageButton(const(char)* str_id, ImTextureRef tex_ref, const ImVec2 image_size, const ImVec2 uv0 = ImVec2(0,0), const ImVec2 uv1 = ImVec2(1,1), const ImVec4 bg_col = ImVec4(0,0,0,0), const ImVec4 tint_col = ImVec4(1,1,1,1));
+    bool igImageButtonEx(ImGuiID id, ImTextureRef tex_ref, const ImVec2 image_size, const ImVec2 uv0, const ImVec2 uv1, const ImVec4 bg_col, const ImVec4 tint_col, ImGuiButtonFlags flags = ImGuiButtonFlags.None);
+    void igImageWithBg(ImTextureRef tex_ref, const ImVec2 image_size, const ImVec2 uv0 = ImVec2(0,0), const ImVec2 uv1 = ImVec2(1,1), const ImVec4 bg_col = ImVec4(0,0,0,0), const ImVec4 tint_col = ImVec4(1,1,1,1));
     /// move content position toward the right, by indent_w, or style.IndentSpacing if indent_w <= 0
     void igIndent(float indent_w = 0.0f);
     void igInitialize();
@@ -5352,6 +5955,8 @@ extern (C) @nogc nothrow {
     bool igIsItemActivated();
     /// is the last item active? (e.g. button being held, text field being edited. This will continuously return true while holding mouse button on an item. Items that don't interact will always return false)
     bool igIsItemActive();
+    /// This may be useful to apply workaround that a based on distinguish whenever an item is active as a text input field.
+    bool igIsItemActiveAsInputText();
     /// is the last item hovered and mouse clicked on? (**)  == IsMouseClicked(mouse_button) && IsItemHovered()Important. (**) this is NOT equivalent to the behavior of e.g. Button(). Read comments in function definition.
     bool igIsItemClicked(ImGuiMouseButton mouse_button = ImGuiMouseButton.Left);
     /// was the last item just made inactive (item was previously active). Useful for Undo/Redo patterns with widgets that require continuous editing.
@@ -5491,7 +6096,7 @@ extern (C) @nogc nothrow {
     void igNavMoveRequestCancel();
     void igNavMoveRequestForward(ImGuiDir move_dir, ImGuiDir clip_dir, ImGuiNavMoveFlags move_flags, ImGuiScrollFlags scroll_flags);
     void igNavMoveRequestResolveWithLastItem(ImGuiNavItemData* result);
-    void igNavMoveRequestResolveWithPastTreeNode(ImGuiNavItemData* result, ImGuiTreeNodeStackData* tree_node_data);
+    void igNavMoveRequestResolveWithPastTreeNode(ImGuiNavItemData* result, const ImGuiTreeNodeStackData* tree_node_data);
     void igNavMoveRequestSubmit(ImGuiDir move_dir, ImGuiDir clip_dir, ImGuiNavMoveFlags move_flags, ImGuiScrollFlags scroll_flags);
     void igNavMoveRequestTryWrapping(ImGuiWindow* window, ImGuiNavMoveFlags move_flags);
     void igNavUpdateCurrentWindowIsScrollPushableX();
@@ -5517,10 +6122,12 @@ extern (C) @nogc nothrow {
     void igPopColumnsBackground();
     void igPopFocusScope();
     void igPopFont();
+    void igPopFontSize();
     /// pop from the ID stack.
     void igPopID();
     void igPopItemFlag();
     void igPopItemWidth();
+    void igPopPasswordFont();
     void igPopStyleColor(int count = 1);
     void igPopStyleVar(int count = 1);
     void igPopTextWrapPos();
@@ -5529,8 +6136,9 @@ extern (C) @nogc nothrow {
     void igPushColumnClipRect(int column_index);
     void igPushColumnsBackground();
     void igPushFocusScope(ImGuiID id);
-    /// use NULL as a shortcut to push default font
-    void igPushFont(ImFont* font);
+    /// use NULL as a shortcut to push default font. Use <0.0f to keep current font size.
+    void igPushFont(ImFont* font, float font_size_base = -1);
+    void igPushFontSize(float font_size_base);
     /// push string into the ID stack (will hash string).
     void igPushID_Str(const(char)* str_id);
     /// push string into the ID stack (will hash string).
@@ -5564,6 +6172,9 @@ extern (C) @nogc nothrow {
     bool igRadioButton_Bool(const(char)* label, bool active);
     /// shortcut to handle the above pattern when value is an integer
     bool igRadioButton_IntPtr(const(char)* label, int* v, int v_button);
+    void igRegisterFontAtlas(ImFontAtlas* atlas);
+    /// Register external texture
+    void igRegisterUserTexture(ImTextureData* tex);
     void igRemoveContextHook(ImGuiContext* context, ImGuiID hook_to_remove);
     void igRemoveSettingsHandler(const(char)* type_name);
     /// ends the Dear ImGui frame, finalize the draw data. You can then get call GetDrawData().
@@ -5587,7 +6198,7 @@ extern (C) @nogc nothrow {
     void igRenderText(ImVec2 pos, const(char)* text, const(char)* text_end = null, bool hide_text_after_hash = true);
     void igRenderTextClipped(const ImVec2 pos_min, const ImVec2 pos_max, const(char)* text, const(char)* text_end, const ImVec2* text_size_if_known, const ImVec2 alignment = ImVec2(0,0), const ImRect* clip_rect = null);
     void igRenderTextClippedEx(ImDrawList* draw_list, const ImVec2 pos_min, const ImVec2 pos_max, const(char)* text, const(char)* text_end, const ImVec2* text_size_if_known, const ImVec2 alignment = ImVec2(0,0), const ImRect* clip_rect = null);
-    void igRenderTextEllipsis(ImDrawList* draw_list, const ImVec2 pos_min, const ImVec2 pos_max, float clip_max_x, float ellipsis_max_x, const(char)* text, const(char)* text_end, const ImVec2* text_size_if_known);
+    void igRenderTextEllipsis(ImDrawList* draw_list, const ImVec2 pos_min, const ImVec2 pos_max, float ellipsis_max_x, const(char)* text, const(char)* text_end, const ImVec2* text_size_if_known);
     void igRenderTextWrapped(ImVec2 pos, const(char)* text, const(char)* text_end, float wrap_width);
     //
     void igResetMouseDragDelta(ImGuiMouseButton button = ImGuiMouseButton.Left);
@@ -5611,7 +6222,7 @@ extern (C) @nogc nothrow {
     /// separator, generally horizontal. inside a menu bar or in horizontal layout mode, this becomes a vertical separator.
     void igSeparator();
     void igSeparatorEx(ImGuiSeparatorFlags flags, float thickness = 1.0f);
-    /// currently: formatted text with an horizontal line
+    /// currently: formatted text with a horizontal line
     void igSeparatorText(const(char)* label);
     void igSeparatorTextEx(ImGuiID id, const(char)* label, const(char)* label_end, float extra_width);
     void igSetActiveID(ImGuiID id, ImGuiWindow* window);
@@ -5625,7 +6236,7 @@ extern (C) @nogc nothrow {
     /// set column width (in pixels). pass -1 to use current column
     void igSetColumnWidth(int column_index, float width);
     void igSetCurrentContext(ImGuiContext* ctx);
-    void igSetCurrentFont(ImFont* font);
+    void igSetCurrentFont(ImFont* font, float font_size_before_scaling, float font_size_after_scaling);
     void igSetCurrentViewport(ImGuiWindow* window, ImGuiViewportP* viewport);
     /// [window-local] "
     void igSetCursorPos(const ImVec2 local_pos);
@@ -5638,8 +6249,9 @@ extern (C) @nogc nothrow {
     /// type is a user defined string of maximum 32 characters. Strings starting with '_' are reserved for dear imgui internal types. Data is copied and held by imgui. Return true when payload has been accepted.
     bool igSetDragDropPayload(const(char)* type, const void* data, size_t sz, ImGuiCond cond = ImGuiCond.None);
     void igSetFocusID(ImGuiID id, ImGuiWindow* window);
+    void igSetFontRasterizerDensity(float rasterizer_density);
     void igSetHoveredID(ImGuiID id);
-    /// make last item the default focused item of of a newly appearing window.
+    /// make last item the default focused item of a newly appearing window.
     void igSetItemDefaultFocus();
     /// Set key owner to last item ID if it is hovered or active. Equivalent to 'if (IsItemHovered() || IsItemActive())  SetKeyOwner(key, GetItemID());'.
     void igSetItemKeyOwner_Nil(ImGuiKey key);
@@ -5663,7 +6275,7 @@ extern (C) @nogc nothrow {
     void igSetNavWindow(ImGuiWindow* window);
     /// Override io.WantCaptureKeyboard flag next frame (said flag is left for your application to handle, typically when true it instructs your app to ignore inputs). e.g. force capture keyboard when your widget is being hovered. This is equivalent to setting "io.WantCaptureKeyboard = want_capture_keyboard"; after the next NewFrame() call.
     void igSetNextFrameWantCaptureKeyboard(bool want_capture_keyboard);
-    /// Override io.WantCaptureMouse flag next frame (said flag is left for your application to handle, typical when true it instucts your app to ignore inputs). This is equivalent to setting "io.WantCaptureMouse = want_capture_mouse;" after the next NewFrame() call.
+    /// Override io.WantCaptureMouse flag next frame (said flag is left for your application to handle, typical when true it instructs your app to ignore inputs). This is equivalent to setting "io.WantCaptureMouse = want_capture_mouse;" after the next NewFrame() call.
     void igSetNextFrameWantCaptureMouse(bool want_capture_mouse);
     /// allow next item to be overlapped by a subsequent item. Useful with invisible buttons, selectable, treenode covering an area where subsequent items may need to be added. Note that both Selectable() and TreeNode() have dedicated flags doing this.
     void igSetNextItemAllowOverlap();
@@ -5735,8 +6347,6 @@ extern (C) @nogc nothrow {
     void igSetWindowFocus_Nil();
     /// set named window to be focused / top-most. use NULL to remove focus.
     void igSetWindowFocus_Str(const(char)* name);
-    /// [OBSOLETE] set font scale. Adjust IO.FontGlobalScale if you want to scale all windows. This is an old API! For correct scaling, prefer to reload font + rebuild ImFontAtlas + call style.ScaleAllSizes().
-    void igSetWindowFontScale(float scale);
     void igSetWindowHiddenAndSkipItemsForCurrentFrame(ImGuiWindow* window);
     void igSetWindowHitTestHole(ImGuiWindow* window, const ImVec2 pos, const ImVec2 size);
     /// You may also use SetNextWindowClass()'s FocusRouteParentWindowId field.
@@ -5883,7 +6493,9 @@ extern (C) @nogc nothrow {
     void igTableNextRow(ImGuiTableRowFlags row_flags = ImGuiTableRowFlags.None, float min_row_height = 0.0f);
     void igTableOpenContextMenu(int column_n = -1);
     void igTablePopBackgroundChannel();
+    void igTablePopColumnChannel();
     void igTablePushBackgroundChannel();
+    void igTablePushColumnChannel(int column_n);
     void igTableRemove(ImGuiTable* table);
     void igTableResetSettings(ImGuiTable* table);
     void igTableSaveSettings(ImGuiTable* table);
@@ -5918,6 +6530,9 @@ extern (C) @nogc nothrow {
     bool igTestShortcutRouting(ImGuiKeyChord key_chord, ImGuiID owner_id);
     /// formatted text
     void igText(const(char)* fmt, ...);
+    /// FIXME-WIP: Works but API is likely to be reworked. This is designed for 1 item on the line. (#7024)
+    void igTextAligned(float align_x, float size_x, const(char)* fmt, ...);
+    void igTextAlignedV(float align_x, float size_x, const(char)* fmt, va_list args);
     /// shortcut for PushStyleColor(ImGuiCol_Text, col); Text(fmt, ...); PopStyleColor();
     void igTextColored(const ImVec4 col, const(char)* fmt, ...);
     void igTextColoredV(const ImVec4 col, const(char)* fmt, va_list args);
@@ -5928,7 +6543,7 @@ extern (C) @nogc nothrow {
     /// hyperlink text button, return true when clicked
     bool igTextLink(const(char)* label);
     /// hyperlink text button, automatically open file/url when clicked
-    void igTextLinkOpenURL(const(char)* label, const(char)* url = null);
+    bool igTextLinkOpenURL(const(char)* label, const(char)* url = null);
     /// raw text without formatting. Roughly equivalent to Text("%s", text) but: A) doesn't require null terminated string if 'text_end' is specified, B) it's faster, no memory copy is done, no buffer size limits, recommended for long chunks of text.
     void igTextUnformatted(const(char)* text, const(char)* text_end = null);
     void igTextV(const(char)* fmt, va_list args);
@@ -5942,6 +6557,8 @@ extern (C) @nogc nothrow {
     /// "
     bool igTreeNode_Ptr(const void* ptr_id, const(char)* fmt, ...);
     bool igTreeNodeBehavior(ImGuiID id, ImGuiTreeNodeFlags flags, const(char)* label, const(char)* label_end = null);
+    void igTreeNodeDrawLineToChildNode(const ImVec2 target_pos);
+    void igTreeNodeDrawLineToTreePop(const ImGuiTreeNodeStackData* data);
     bool igTreeNodeEx_Str(const(char)* label, ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags.None);
     bool igTreeNodeEx_StrStr(const(char)* str_id, ImGuiTreeNodeFlags flags, const(char)* fmt, ...);
     bool igTreeNodeEx_Ptr(const void* ptr_id, ImGuiTreeNodeFlags flags, const(char)* fmt, ...);
@@ -5965,7 +6582,10 @@ extern (C) @nogc nothrow {
     int igTypingSelectFindNextSingleCharMatch(ImGuiTypingSelectRequest* req, int items_count, const(char)* function(void*,int) get_item_name_func, void* user_data, int nav_item_idx);
     /// move content position back to the left, by indent_w, or style.IndentSpacing if indent_w <= 0
     void igUnindent(float indent_w = 0.0f);
-    void igUpdateHoveredWindowAndCaptureFlags();
+    void igUnregisterFontAtlas(ImFontAtlas* atlas);
+    void igUnregisterUserTexture(ImTextureData* tex);
+    void igUpdateCurrentFontSize(float restore_font_size_after_scaling);
+    void igUpdateHoveredWindowAndCaptureFlags(const ImVec2 mouse_pos);
     void igUpdateInputEvents(bool trickle_fast_inputs);
     void igUpdateMouseMovingWindowEndFrame();
     void igUpdateMouseMovingWindowNewFrame();
@@ -6182,6 +6802,18 @@ ImRect*  ImRect_ImRect(float x1, float y1, float x2, float y2)
 }
 
 pragma(inline):
+ImTextureRef*  ImTextureRef_ImTextureRef()
+{
+    return  ImTextureRef_ImTextureRef_Nil();
+}
+
+pragma(inline):
+ImTextureRef*  ImTextureRef_ImTextureRef(ImTextureID tex_id)
+{
+    return  ImTextureRef_ImTextureRef_TextureID(tex_id);
+}
+
+pragma(inline):
 ImVec1*  ImVec1_ImVec1()
 {
     return  ImVec1_ImVec1_Nil();
@@ -6203,6 +6835,18 @@ pragma(inline):
 ImVec2*  ImVec2_ImVec2(float _x, float _y)
 {
     return  ImVec2_ImVec2_Float(_x, _y);
+}
+
+pragma(inline):
+ImVec2i*  ImVec2i_ImVec2i()
+{
+    return  ImVec2i_ImVec2i_Nil();
+}
+
+pragma(inline):
+ImVec2i*  ImVec2i_ImVec2i(int _x, int _y)
+{
+    return  ImVec2i_ImVec2i_Int(_x, _y);
 }
 
 pragma(inline):
@@ -6370,6 +7014,18 @@ ImGuiID  igGetIDWithSeed(int n, ImGuiID seed)
 }
 
 pragma(inline):
+ImGuiIO*  igGetIO()
+{
+    return  igGetIO_Nil();
+}
+
+pragma(inline):
+ImGuiIO*  igGetIO(ImGuiContext* ctx)
+{
+    return  igGetIO_ContextPtr(ctx);
+}
+
+pragma(inline):
 ImGuiKeyData*  igGetKeyData(ImGuiContext* ctx, ImGuiKey key)
 {
     return  igGetKeyData_ContextPtr(ctx, key);
@@ -6379,6 +7035,18 @@ pragma(inline):
 ImGuiKeyData*  igGetKeyData(ImGuiKey key)
 {
     return  igGetKeyData_Key(key);
+}
+
+pragma(inline):
+ImGuiPlatformIO*  igGetPlatformIO()
+{
+    return  igGetPlatformIO_Nil();
+}
+
+pragma(inline):
+ImGuiPlatformIO*  igGetPlatformIO(ImGuiContext* ctx)
+{
+    return  igGetPlatformIO_ContextPtr(ctx);
 }
 
 pragma(inline):
