@@ -51,7 +51,11 @@ else ()
     set(PlatformFolder "Unknown")
 endif()
 
-set(OutputDirectory ${CMAKE_CURRENT_LIST_DIR}/../libs/${PlatformArchitecture}/${PlatformFolder})
+if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set(OutputDirectory ${CMAKE_CURRENT_LIST_DIR}/../libs/${PlatformFolder})
+else ()
+    set(OutputDirectory ${CMAKE_CURRENT_LIST_DIR}/../libs/${PlatformArchitecture}/${PlatformFolder})
+endif()
 
 if (DEFINED STATIC_CIMGUI)
     set(OutputDirectory ${OutputDirectory}/Static)
@@ -87,3 +91,7 @@ set_target_properties(cimgui PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${OutputDirecto
 set_target_properties(cimgui PROPERTIES ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${OutputDirectory})
 set_target_properties(cimgui PROPERTIES LIBRARY_OUTPUT_DIRECTORY_RELEASE ${OutputDirectory})
 set_target_properties(cimgui PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE ${OutputDirectory})
+
+if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    set_target_properties(cimgui PROPERTIES PREFIX "lib")
+endif()

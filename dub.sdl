@@ -111,10 +111,11 @@ configuration "dynamic_dynamicCRT" {
     // macOS
     preBuildCommands \
         "cmake -S deps -B deps/build_macOS_cimguiDynamic" \
-        "cmake --build deps/build_macOS_cimguiDynamic --config Release" platform="darwin"
+        "cmake --build deps/build_macOS_cimguiDynamic --config Release" platform="osx"
 
-    copyFiles "libs/arm64/darwin/Dynamic/*.dylib" platform="darwin-aarch64"
-    copyFiles "libs/x86_64/darwin/Dynamic/*.dylib" platform="darwin-x86_64"
+    copyFiles "libs/darwin/Dynamic/*.dylib" platform="osx"
+    lflags "-L$PACKAGE_DIR/libs/darwin/Dynamic/" platform="osx"
+    libs "cimgui" platform="osx"
 
     // Linux x86_64
     preBuildCommands \
