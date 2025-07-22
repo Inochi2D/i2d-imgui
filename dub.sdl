@@ -5,6 +5,7 @@ authors "Joshua T. Fisher" "Luna Nielsen"
 license "Boost"
 
 dependency "i2d-opengl" version="~>1.0.0"
+dependency "sdl-d" version=">=3.2.0-rc3 <3.3.0-0"
 versions "GL_33"
 targetPath "out/"
 
