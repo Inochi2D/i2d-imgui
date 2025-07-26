@@ -12,6 +12,9 @@ dub.selections.json
 
 *.exp
 *.lib
+*.exe
+*.pdb
+*.dll
 
 #Avoid outputs being pushed
 bindbc-imgui

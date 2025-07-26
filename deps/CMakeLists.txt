@@ -84,14 +84,22 @@ if (NOT UNIX OR APPLE OR DEFINED USE_SUBMODULE_SOURCES) # Windows and Mac
     set(IMGUI_FREETYPE "yes" CACHE STRING "Build with freetype library")
     set(IMGUI_FREETYPE_IN_TREE "yes" CACHE STRING "freetype library is being build in-tree")
 
+
     add_subdirectory(${SDL_SUBMOD_DIR})
-    set_target_properties(SDL2 PROPERTIES DEBUG_POSTFIX "")
-    set_target_properties(SDL2 PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${OutputDirectory})
-    set_target_properties(SDL2 PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${OutputDirectory})
-    set_target_properties(SDL2 PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${OutputDirectory})
-    set_target_properties(SDL2 PROPERTIES ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${OutputDirectory})
-    set_target_properties(SDL2 PROPERTIES LIBRARY_OUTPUT_DIRECTORY_RELEASE ${OutputDirectory})
-    set_target_properties(SDL2 PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE ${OutputDirectory})
+
+    if (TARGET SDL2)
+        set(SDL_target SDL2)
+    else()
+        set(SDL_target SDL2-static)
+    endif()
+
+    set_target_properties(${SDL_target} PROPERTIES DEBUG_POSTFIX "")
+    set_target_properties(${SDL_target} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY ${OutputDirectory})
+    set_target_properties(${SDL_target} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${OutputDirectory})
+    set_target_properties(${SDL_target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${OutputDirectory})
+    set_target_properties(${SDL_target} PROPERTIES ARCHIVE_OUTPUT_DIRECTORY_RELEASE ${OutputDirectory})
+    set_target_properties(${SDL_target} PROPERTIES LIBRARY_OUTPUT_DIRECTORY_RELEASE ${OutputDirectory})
+    set_target_properties(${SDL_target} PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE ${OutputDirectory})
     set(IMGUI_SDL_IN_TREE "yes" CACHE STRING "SDL library is built in-tree")
 else() # Linux
     include(FindFreetype)
@@ -103,7 +111,12 @@ else() # Linux
     set(IMGUI_SDL_IN_TREE "no" CACHE STRING "SDL library is built in-tree")
 endif()
 
+
+message(STATUS "IMGUI_FREETYPE = ${IMGUI_FREETYPE}")
+message(STATUS "IMGUI_FREETYPE_IN_TREE = ${IMGUI_FREETYPE_IN_TREE}")
+
 option(BUILD_SHARED_LIBS "Build shared instead of static libraries." OFF)
+
 set(IMGUI_SDL "yes" CACHE STRING "Build with SDL")
 set(IMGUI_OPENGL3 "yes" CACHE STRING "Build with OpenGL3")
 add_subdirectory(${cimgui_SUBMOD_DIR})
