@@ -1,3 +1,4 @@
 [submodule "deps/cimgui"]
 	path = deps/cimgui
 	url = https://github.com/Inochi2D/cimgui.git
+	branch = a2d7340
