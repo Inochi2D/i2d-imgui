@@ -1304,6 +1304,9 @@ void write_function_loading(code_writer codeWriter, JSONValue definitions)
 {
     foreach (string functionName, JSONValue functionDecl; definitions) 
     {
+        if (functionName == "igImQsort")
+            continue;
+
         foreach (JSONValue cimguiFunction; functionDecl.array)
         {
             if ("templated" in cimguiFunction && cimguiFunction["templated"].boolean)
@@ -1626,6 +1629,9 @@ function_overload_info[] write_functions(code_writer codeWriter, JSONValue defin
         string functionName = func.functionName;
         JSONValue functionDecl = func.functionDecl;
         if (functionName == "ImVector_ImVector")
+            continue;
+        
+        if (functionName == "igImQsort")
             continue;
 
         foreach (JSONValue cimguiFunction; functionDecl.array)
