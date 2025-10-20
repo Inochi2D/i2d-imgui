@@ -28,19 +28,21 @@ configuration "static_dynamicCRT" {
     libs "$PACKAGE_DIR/libs/x86/win32/Static/DynamicCRT/cimgui" platform="windows-x86"
     
     // Linux x86_64
+    preBuildEnvironments "CC" "clang" "CXX" "clang++" platform="linux-x86_64"
     preBuildCommands \
         "cmake -DSTATIC_CIMGUI= -S deps -B deps/build_linux_x64_cimguiStatic" \
         "cmake --build deps/build_linux_x64_cimguiStatic --config Release" platform="linux-x86_64"
 
-    sourceFiles "$PACKAGE_DIR/libs/x86_64/linux/Static/cimgui.a" platform="linux-x86_64"
+    sourceFiles "$PACKAGE_DIR/libs/x86_64/linux/Static/libcimgui.a" platform="linux-x86_64"
     libs ":libstdc++.so" platform="linux-x86_64"
 
     // Linux aarch64
+    preBuildEnvironments "CC" "clang" "CXX" "clang++" platform="linux-aarch64"
     preBuildCommands \
         "cmake -DSTATIC_CIMGUI= -S deps -B deps/build_linux_aarch64_cimguiStatic" \
         "cmake --build deps/build_linux_aarch64_cimguiStatic --config Release" platform="linux-aarch64"
 
-    sourceFiles "$PACKAGE_DIR/libs/aarch64/linux/Static/cimgui.a" platform="linux-aarch64"
+    sourceFiles "$PACKAGE_DIR/libs/aarch64/linux/Static/libcimgui.a" platform="linux-aarch64"
     libs ":libstdc++.so" platform="linux-aarch64"
 }
 
@@ -66,19 +68,23 @@ configuration "static_staticCRT" {
     libs "$PACKAGE_DIR/libs/x86/win32/Static/StaticCRT/cimgui" platform="windows-x86"
 
     // Linux x86_64
+	dflags "--fno-plt" platform="linux-x86_64-ldc"
+    preBuildEnvironments "CC" "clang" "CXX" "clang++" platform="linux-x86_64"
     preBuildCommands \
         "cmake -DSTATIC_CIMGUI= -S deps -B deps/build_linux_x64_cimguiStatic" \
         "cmake --build deps/build_linux_x64_cimguiStatic --config Release" platform="linux-x86_64"
 
-    sourceFiles "$PACKAGE_DIR/libs/x86_64/linux/Static/cimgui.a" platform="linux-x86_64"
+    sourceFiles "$PACKAGE_DIR/libs/x86_64/linux/Static/libcimgui.a" platform="linux-x86_64"
     libs ":libstdc++.a" platform="linux-x86_64"
 
     // Linux aarch64
+	dflags "--fno-plt" platform="linux-aarch64-ldc"
+    preBuildEnvironments "CC" "clang" "CXX" "clang++" platform="linux-aarch64"
     preBuildCommands \
         "cmake -DSTATIC_CIMGUI= -S deps -B deps/build_linux_aarch64_cimguiStatic" \
         "cmake --build deps/build_linux_aarch64_cimguiStatic --config Release" platform="linux-aarch64"
 
-    sourceFiles "$PACKAGE_DIR/libs/aarch64/linux/Static/cimgui.a" platform="linux-aarch64"
+    sourceFiles "$PACKAGE_DIR/libs/aarch64/linux/Static/libcimgui.a" platform="linux-aarch64"
     libs ":libstdc++.a" platform="linux-aarch64"
 }
 
@@ -116,19 +122,26 @@ configuration "dynamic_dynamicCRT" {
     libs "cimgui" platform="osx"
 
     // Linux x86_64
+	dflags "--fno-plt" platform="linux-x86_64-ldc"
+    preBuildEnvironments "CC" "clang" "CXX" "clang++" platform="linux-x86_64"
     preBuildCommands \
         "cmake -S deps -B deps/build_linux_x64_cimguiDynamic" \
         "cmake --build deps/build_linux_x64_cimguiDynamic --config Release" platform="linux-x86_64"
 
-    copyFiles "libs/x86_64/linux/Dynamic/cimgui.so" platform="linux-x86_64"
+    copyFiles "libs/x86_64/linux/Dynamic/libcimgui.so" platform="linux-x86_64"
+    lflags "-L$PACKAGE_DIR/libs/x86_64/linux/Dynamic/" platform="linux-x86_64"
+    libs "cimgui" platform="linux-x86_64"
 
     // Linux aarch64
+	dflags "--fno-plt" platform="linux-aarch64-ldc"
+    preBuildEnvironments "CC" "clang" "CXX" "clang++" platform="linux-aarch64"
     preBuildCommands \
         "cmake -S deps -B deps/build_linux_aarch64_cimguiDynamic" \
         "cmake --build deps/build_linux_aarch64_cimguiDynamic --config Release" platform="linux-aarch64"
 
-    copyFiles "libs/aarch64/linux/Dynamic/cimgui.so" platform="linux-aarch64"
-
+    copyFiles "libs/aarch64/linux/Dynamic/libcimgui.so" platform="linux-aarch64"
+    lflags "-L$PACKAGE_DIR/libs/aarch64/linux/Dynamic/" platform="linux-x86_64"
+    libs "cimgui" platform="linux-aarch64"
 }
 
 configuration "dynamic_staticCRT" {
@@ -166,16 +179,24 @@ configuration "dynamic_staticCRT" {
     copyFiles "libs/x86_64/darwin/Dynamic/*.dylib" platform="osx-x86_64"
 
     // Linux x86_64
+	dflags "--fno-plt" platform="linux-x86_64-ldc"
+    preBuildEnvironments "CC" "clang" "CXX" "clang++" platform="linux-x86_64"
     preBuildCommands \
         "cmake -S deps -B deps/build_linux_x64_cimguiDynamic" \
         "cmake --build deps/build_linux_x64_cimguiDynamic --config Release" platform="linux-x86_64"
         
-    copyFiles "libs/x86_64/linux/Dynamic/cimgui.so" platform="linux-x86_64"
+    copyFiles "libs/x86_64/linux/Dynamic/libcimgui.so" platform="linux-x86_64"
+    lflags "-L$PACKAGE_DIR/libs/x86_64/linux/Dynamic/" platform="linux-x86_64"
+    libs "cimgui" platform="linux-x86_64"
 
     // Linux aarch64
+	dflags "--fno-plt" platform="linux-aarch64-ldc"
+    preBuildEnvironments "CC" "clang" "CXX" "clang++" platform="linux-aarch64"
     preBuildCommands \
         "cmake -S deps -B deps/build_linux_aarch64_cimguiDynamic" \
         "cmake --build deps/build_linux_aarch64_cimguiDynamic --config Release" platform="linux-aarch64"
 
-    copyFiles "libs/aarch64/linux/Dynamic/cimgui.so" platform="linux-aarch64"
+    copyFiles "libs/aarch64/linux/Dynamic/libcimgui.so" platform="linux-aarch64"
+    lflags "-L$PACKAGE_DIR/libs/aarch64/linux/Dynamic/" platform="linux-x86_64"
+    libs "cimgui" platform="linux-aarch64"
 }

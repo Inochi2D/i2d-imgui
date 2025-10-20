@@ -31,13 +31,21 @@ Dynamically linked cimgui, statically linked C/C++ runtime libraries.
 - Dlang, either dmd or ldc
 
 ### Linux
+#### Notes
+  Ensure to set environment up to use clang and clang++ for compilation
+  ```
+  export CC=clang
+  export CXX=clang++
+  ```
 #### Dependencies
-- The equivalent of build-essential on Ubuntu, on centos 7, this was `sudo yum groupinstall 'Development Tools'`, this should get you a working C++ toolchain.
+- The equivalent of build-essential on Ubuntu, on centos 7, this was `sudo yum groupinstall 'Development Tools'`.
+- clang and clang++
 - Dlang, either dmd or ldc
 - CMake (Currently 3.16 or higher is needed.)
 - SDL2 (developer package)
 - Freetype (developer package)
 - appimagetool (for building an AppImage)
+
 
 ### Mac
 #### Notes
