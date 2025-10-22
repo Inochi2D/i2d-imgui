@@ -5,10 +5,15 @@ build*/
 libs/
 out/
 
-.dub/
-.vscode/
-
+# (re)dub garbage
 dub.selections.json
+.ldc2_cache/
+.dub/
+
+#Other Junk
+.vscode/
+imgui.ini
+.DS_Store
 
 *.exp
 *.lib
@@ -23,7 +28,3 @@ bindbc-imgui-test.exe
 #Also on Linux
 libbindbc-imgui.so
 libbindbc-imgui.a
-
-imgui.ini
-
-.DS_Store
