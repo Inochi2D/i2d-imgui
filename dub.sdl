@@ -28,7 +28,6 @@ configuration "static_dynamicCRT" {
     libs "$PACKAGE_DIR/libs/x86/win32/Static/DynamicCRT/cimgui" platform="windows-x86"
     
     // Linux x86_64
-    preBuildEnvironments "CC" "clang" "CXX" "clang++" platform="linux-x86_64"
     preBuildCommands \
         "cmake -DSTATIC_CIMGUI= -S deps -B deps/build_linux_x64_cimguiStatic" \
         "cmake --build deps/build_linux_x64_cimguiStatic --config Release" platform="linux-x86_64"
@@ -37,7 +36,6 @@ configuration "static_dynamicCRT" {
     libs ":libstdc++.so" platform="linux-x86_64"
 
     // Linux aarch64
-    preBuildEnvironments "CC" "clang" "CXX" "clang++" platform="linux-aarch64"
     preBuildCommands \
         "cmake -DSTATIC_CIMGUI= -S deps -B deps/build_linux_aarch64_cimguiStatic" \
         "cmake --build deps/build_linux_aarch64_cimguiStatic --config Release" platform="linux-aarch64"
@@ -69,7 +67,6 @@ configuration "static_staticCRT" {
 
     // Linux x86_64
 	dflags "--fno-plt" platform="linux-x86_64-ldc"
-    preBuildEnvironments "CC" "clang" "CXX" "clang++" platform="linux-x86_64"
     preBuildCommands \
         "cmake -DSTATIC_CIMGUI= -S deps -B deps/build_linux_x64_cimguiStatic" \
         "cmake --build deps/build_linux_x64_cimguiStatic --config Release" platform="linux-x86_64"
@@ -79,7 +76,6 @@ configuration "static_staticCRT" {
 
     // Linux aarch64
 	dflags "--fno-plt" platform="linux-aarch64-ldc"
-    preBuildEnvironments "CC" "clang" "CXX" "clang++" platform="linux-aarch64"
     preBuildCommands \
         "cmake -DSTATIC_CIMGUI= -S deps -B deps/build_linux_aarch64_cimguiStatic" \
         "cmake --build deps/build_linux_aarch64_cimguiStatic --config Release" platform="linux-aarch64"
@@ -123,7 +119,6 @@ configuration "dynamic_dynamicCRT" {
 
     // Linux x86_64
 	dflags "--fno-plt" platform="linux-x86_64-ldc"
-    preBuildEnvironments "CC" "clang" "CXX" "clang++" platform="linux-x86_64"
     preBuildCommands \
         "cmake -S deps -B deps/build_linux_x64_cimguiDynamic" \
         "cmake --build deps/build_linux_x64_cimguiDynamic --config Release" platform="linux-x86_64"
@@ -134,7 +129,6 @@ configuration "dynamic_dynamicCRT" {
 
     // Linux aarch64
 	dflags "--fno-plt" platform="linux-aarch64-ldc"
-    preBuildEnvironments "CC" "clang" "CXX" "clang++" platform="linux-aarch64"
     preBuildCommands \
         "cmake -S deps -B deps/build_linux_aarch64_cimguiDynamic" \
         "cmake --build deps/build_linux_aarch64_cimguiDynamic --config Release" platform="linux-aarch64"
@@ -180,7 +174,6 @@ configuration "dynamic_staticCRT" {
 
     // Linux x86_64
 	dflags "--fno-plt" platform="linux-x86_64-ldc"
-    preBuildEnvironments "CC" "clang" "CXX" "clang++" platform="linux-x86_64"
     preBuildCommands \
         "cmake -S deps -B deps/build_linux_x64_cimguiDynamic" \
         "cmake --build deps/build_linux_x64_cimguiDynamic --config Release" platform="linux-x86_64"
@@ -191,7 +184,6 @@ configuration "dynamic_staticCRT" {
 
     // Linux aarch64
 	dflags "--fno-plt" platform="linux-aarch64-ldc"
-    preBuildEnvironments "CC" "clang" "CXX" "clang++" platform="linux-aarch64"
     preBuildCommands \
         "cmake -S deps -B deps/build_linux_aarch64_cimguiDynamic" \
         "cmake --build deps/build_linux_aarch64_cimguiDynamic --config Release" platform="linux-aarch64"
